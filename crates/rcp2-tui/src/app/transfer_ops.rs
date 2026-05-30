@@ -131,6 +131,10 @@ impl App {
             self.status = "download requires --allow-send".into();
             return;
         }
+        if !self.has_transfer_tools {
+            self.status = "transfer requires lsblk and udisksctl".into();
+            return;
+        }
         if self.pad_upload.is_some() {
             self.status = "upload in progress".into();
             return;

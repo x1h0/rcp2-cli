@@ -378,6 +378,10 @@ impl App {
         env_stop: Option<f64>,
         duration: Option<f64>,
     ) {
+        if !self.has_transfer_tools {
+            self.status = "transfer requires lsblk and udisksctl".into();
+            return;
+        }
         if self.pad_download.is_some() {
             self.status = "download in progress".into();
             return;
@@ -412,6 +416,10 @@ impl App {
     }
 
     fn confirm_create_pad(&mut self) {
+        if !self.has_transfer_tools {
+            self.status = "transfer requires lsblk and udisksctl".into();
+            return;
+        }
         if self.pad_download.is_some() {
             self.status = "download in progress".into();
             return;
