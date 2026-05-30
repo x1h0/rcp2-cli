@@ -37,7 +37,7 @@ Many device features are not accessible through this tool, including mixer/EQ/ef
 - Linux (uses hidraw backend)
 - RØDECaster Pro II connected via the main USB-C port
 - udev rules for non-root access (see below)
-- Build: `libudev-dev` (Debian/Ubuntu) or `systemd-libs` (Arch) for hidapi compilation
+- Build: `libudev-dev libwayland-dev` (Debian/Ubuntu) or `systemd-libs wayland` (Arch)
 - Runtime: `lsblk`, `udisksctl` (for transfer mode mount detection)
 
 
