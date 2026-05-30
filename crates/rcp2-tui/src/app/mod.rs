@@ -178,6 +178,8 @@ impl App {
                     self.connected = false;
                     self.status = "disconnected".into();
                     self.push_log("[disconnected]".into());
+                    self.rec_started_at = None;
+                    self.rec_paused_elapsed = 0;
                 }
                 DeviceEvent::Error(e) => {
                     self.status = format!("error: {e}");
