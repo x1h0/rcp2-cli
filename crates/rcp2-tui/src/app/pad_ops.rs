@@ -134,44 +134,14 @@ impl App {
     }
 
     pub fn detail_form_left(&mut self) {
-        let Some(ref mut form) = self.detail_form else {
-            return;
-        };
-        let Some(field) = form.selected_field() else {
-            return;
-        };
-        if field.kind == FieldKind::Cycle {
-            if let Some(ref prop) = field.property.clone() {
-                self.cycle_field(prop, false);
-            }
-            return;
-        }
-        if field.kind != FieldKind::ColorCycle {
-            return;
-        }
-        if form.new_pad_idx.is_some() {
-            form.new_pad_color = (form.new_pad_color + 11) % 12;
-            let (r, g, b) = rcp2_core::PadColor::from_index(form.new_pad_color).to_rgb();
-            if let Some(f) = form
-                .fields
-                .iter_mut()
-                .find(|f| f.property.as_deref() == Some("padColourIndex"))
-            {
-                f.value_display = format!("#{r:02x}{g:02x}{b:02x}");
-            }
-        } else {
-            let pad = self.selected_pad_info().cloned();
-            if let Some(pad) = pad {
-                let new_color = (pad.color_index + 11) % 12;
-                self.send_pad_property(
-                    "padColourIndex",
-                    Value::U32(u32::try_from(new_color).unwrap_or(0)),
-                );
-            }
-        }
+        self.detail_form_cycle(false);
     }
 
     pub fn detail_form_right(&mut self) {
+        self.detail_form_cycle(true);
+    }
+
+    fn detail_form_cycle(&mut self, forward: bool) {
         let Some(ref mut form) = self.detail_form else {
             return;
         };
@@ -180,15 +150,16 @@ impl App {
         };
         if field.kind == FieldKind::Cycle {
             if let Some(ref prop) = field.property.clone() {
-                self.cycle_field(prop, true);
+                self.cycle_field(prop, forward);
             }
             return;
         }
         if field.kind != FieldKind::ColorCycle {
             return;
         }
+        let offset = if forward { 1 } else { 11 };
         if form.new_pad_idx.is_some() {
-            form.new_pad_color = (form.new_pad_color + 1) % 12;
+            form.new_pad_color = (form.new_pad_color + offset) % 12;
             let (r, g, b) = rcp2_core::PadColor::from_index(form.new_pad_color).to_rgb();
             if let Some(f) = form
                 .fields
@@ -200,7 +171,7 @@ impl App {
         } else {
             let pad = self.selected_pad_info().cloned();
             if let Some(pad) = pad {
-                let new_color = (pad.color_index + 1) % 12;
+                let new_color = (pad.color_index + offset) % 12;
                 self.send_pad_property(
                     "padColourIndex",
                     Value::U32(u32::try_from(new_color).unwrap_or(0)),
