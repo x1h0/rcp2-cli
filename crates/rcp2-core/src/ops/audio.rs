@@ -28,6 +28,9 @@ pub fn wav_duration_secs(path: &Path) -> Option<f64> {
                 let did = &data[dpos..dpos + 4];
                 let dsize_u32 = u32::from_le_bytes(data[dpos + 4..dpos + 8].try_into().ok()?);
                 if did == b"data" {
+                    if sample_rate == 0.0 || channels == 0.0 || bits_per_sample == 0.0 {
+                        return None;
+                    }
                     let dsize = f64::from(dsize_u32);
                     let bytes_per_sample = bits_per_sample / 8.0;
                     let total_samples = dsize / (channels * bytes_per_sample);
