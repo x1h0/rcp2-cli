@@ -8,8 +8,7 @@ impl App {
             self.status = "transfer requires --allow-send".into();
             return;
         }
-        if !self.has_transfer_tools {
-            self.status = "transfer requires lsblk and udisksctl".into();
+        if !self.require_transfer_tools() {
             return;
         }
         if self.transfer.status == crate::transfer::TransferStatus::Active {
@@ -35,8 +34,7 @@ impl App {
     }
 
     pub(super) fn activate_transfer_mode(&mut self, mode: u32) {
-        if !self.has_transfer_tools {
-            self.status = "transfer requires lsblk and udisksctl".into();
+        if !self.require_transfer_tools() {
             self.transfer.status = crate::transfer::TransferStatus::Error;
             return;
         }
@@ -131,8 +129,7 @@ impl App {
             self.status = "download requires --allow-send".into();
             return;
         }
-        if !self.has_transfer_tools {
-            self.status = "transfer requires lsblk and udisksctl".into();
+        if !self.require_transfer_tools() {
             return;
         }
         if self.pad_upload.is_some() {

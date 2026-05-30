@@ -324,8 +324,7 @@ impl App {
     }
 
     fn confirm_replace_sound(&mut self) {
-        if self.pad_download.is_some() {
-            self.status = "download in progress".into();
+        if !self.require_no_active_download() {
             return;
         }
         let Some(ref form) = self.detail_form else {
@@ -378,12 +377,10 @@ impl App {
         env_stop: Option<f64>,
         duration: Option<f64>,
     ) {
-        if !self.has_transfer_tools {
-            self.status = "transfer requires lsblk and udisksctl".into();
+        if !self.require_transfer_tools() {
             return;
         }
-        if self.pad_download.is_some() {
-            self.status = "download in progress".into();
+        if !self.require_no_active_download() {
             return;
         }
         let Some(pad) = self.selected_pad_info() else {
@@ -416,12 +413,10 @@ impl App {
     }
 
     fn confirm_create_pad(&mut self) {
-        if !self.has_transfer_tools {
-            self.status = "transfer requires lsblk and udisksctl".into();
+        if !self.require_transfer_tools() {
             return;
         }
-        if self.pad_download.is_some() {
-            self.status = "download in progress".into();
+        if !self.require_no_active_download() {
             return;
         }
         let Some(ref form) = self.detail_form else {

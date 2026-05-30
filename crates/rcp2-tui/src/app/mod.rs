@@ -303,6 +303,22 @@ impl App {
         };
     }
 
+    pub(super) fn require_transfer_tools(&mut self) -> bool {
+        if self.has_transfer_tools {
+            return true;
+        }
+        self.status = "transfer requires lsblk and udisksctl".into();
+        false
+    }
+
+    pub(super) fn require_no_active_download(&mut self) -> bool {
+        if self.pad_download.is_none() {
+            return true;
+        }
+        self.status = "download in progress".into();
+        false
+    }
+
     pub fn scroll_log_up(&mut self) {
         let max = self.event_log.len().saturating_sub(1);
         self.log_scroll = (self.log_scroll + 1).min(max);
