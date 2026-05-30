@@ -116,15 +116,13 @@ impl App {
     }
 
     fn check_transfer_tools() -> bool {
-        let has_lsblk = std::process::Command::new("lsblk")
-            .arg("--version")
-            .output()
-            .is_ok_and(|o| o.status.success());
-        let has_udisksctl = std::process::Command::new("udisksctl")
-            .arg("--version")
-            .output()
-            .is_ok_and(|o| o.status.success());
-        has_lsblk && has_udisksctl
+        let check = |name| {
+            std::process::Command::new("sh")
+                .args(["-c", &format!("command -v {name}")])
+                .output()
+                .is_ok_and(|o| o.status.success())
+        };
+        check("lsblk") && check("udisksctl")
     }
 
     pub fn poll_device_events(&mut self) {
