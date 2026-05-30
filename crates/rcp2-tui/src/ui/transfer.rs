@@ -3,6 +3,8 @@ use crate::transfer::{PadDownloadState, PadUploadState, TransferStatus, format_s
 use ratatui::prelude::*;
 use ratatui::widgets::{Block, Borders, List, ListItem, Padding, Paragraph, Wrap};
 
+use super::util::render_scrollbar;
+
 pub(super) fn render_transfer(frame: &mut Frame, area: Rect, app: &App) {
     if app.transfer.storage_choice.is_none() {
         render_storage_choice(frame, area);
@@ -166,6 +168,8 @@ pub(super) fn render_transfer_file_list(frame: &mut Frame, area: Rect, app: &App
 
     let list = List::new(items).block(block);
     frame.render_widget(list, area);
+
+    render_scrollbar(frame, area, total, inner_height, scroll);
 }
 
 pub(super) fn render_transfer_save_prompt(frame: &mut Frame, area: Rect, app: &App) {

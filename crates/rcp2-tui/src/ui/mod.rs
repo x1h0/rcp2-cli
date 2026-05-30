@@ -11,7 +11,7 @@ use crate::app::{App, MainView};
 use ratatui::prelude::*;
 use ratatui::widgets::{Block, Borders, Padding, Paragraph, Wrap};
 
-pub fn render(frame: &mut Frame, app: &App) {
+pub fn render(frame: &mut Frame, app: &mut App) {
     let area = frame.area();
 
     let outer = Layout::default()
@@ -127,7 +127,7 @@ pub fn render_disclaimer(frame: &mut Frame, area: Rect, allow_send: bool) {
     frame.render_widget(paragraph, inner);
 }
 
-fn render_main(frame: &mut Frame, area: Rect, app: &App) {
+fn render_main(frame: &mut Frame, area: Rect, app: &mut App) {
     if app.modal == crate::app::ModalState::Help {
         help::render_help(frame, area, app);
         return;

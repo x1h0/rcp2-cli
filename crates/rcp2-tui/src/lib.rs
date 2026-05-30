@@ -130,7 +130,9 @@ fn handle_key_press(app: &mut App, code: KeyCode) -> bool {
                 app.help_scroll = 0;
             }
             KeyCode::Up => app.help_scroll = app.help_scroll.saturating_sub(1),
-            KeyCode::Down => app.help_scroll = app.help_scroll.saturating_add(1),
+            KeyCode::Down => {
+                app.help_scroll = app.help_scroll.saturating_add(1).min(app.help_max_scroll);
+            }
             _ => {}
         }
         return false;

@@ -1,8 +1,8 @@
 use crate::app::App;
 use ratatui::prelude::*;
-use ratatui::widgets::{
-    Block, Borders, List, ListItem, Padding, Scrollbar, ScrollbarOrientation, ScrollbarState,
-};
+use ratatui::widgets::{Block, Borders, List, ListItem, Padding};
+
+use super::util::render_scrollbar;
 
 pub(super) fn render_monitor(frame: &mut Frame, area: Rect, app: &App) {
     let inner_height = area.height.saturating_sub(2) as usize;
@@ -41,13 +41,6 @@ pub(super) fn render_monitor(frame: &mut Frame, area: Rect, app: &App) {
 
     frame.render_widget(list, area);
 
-    if total > inner_height {
-        let max_scroll = total.saturating_sub(inner_height);
-        let position = max_scroll.saturating_sub(app.log_scroll);
-        let mut state = ScrollbarState::new(max_scroll).position(position);
-        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
-            .begin_symbol(None)
-            .end_symbol(None);
-        frame.render_stateful_widget(scrollbar, area, &mut state);
-    }
+    let position = total.saturating_sub(inner_height).saturating_sub(app.log_scroll);
+    render_scrollbar(frame, area, total, inner_height, position);
 }

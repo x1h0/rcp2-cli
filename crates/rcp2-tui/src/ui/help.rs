@@ -2,9 +2,11 @@ use crate::app::App;
 use ratatui::prelude::*;
 use ratatui::widgets::{Block, Borders, Padding, Paragraph};
 
+use super::util::render_scrollbar;
+
 use super::util::hotkey_line;
 
-pub(super) fn render_help(frame: &mut Frame, area: Rect, app: &App) {
+pub(super) fn render_help(frame: &mut Frame, area: Rect, app: &mut App) {
     let send = app.allow_send;
     let dim = Style::default().fg(Color::DarkGray);
 
@@ -81,8 +83,13 @@ pub(super) fn render_help(frame: &mut Frame, area: Rect, app: &App) {
         .border_style(Style::default().fg(Color::Cyan))
         .padding(Padding::new(1, 1, 1, 0));
 
+    let line_count = lines.len();
     let paragraph = Paragraph::new(lines)
         .block(block)
         .scroll((app.help_scroll, 0));
     frame.render_widget(paragraph, area);
+
+    let inner_height = area.height.saturating_sub(3) as usize;
+    app.help_max_scroll = line_count.saturating_sub(inner_height) as u16;
+    render_scrollbar(frame, area, line_count, inner_height, app.help_scroll as usize);
 }

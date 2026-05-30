@@ -1,10 +1,28 @@
 use ratatui::prelude::*;
+use ratatui::widgets::{Scrollbar, ScrollbarOrientation, ScrollbarState};
 
 pub(super) fn hotkey_line(key: &str, desc: &str) -> Line<'static> {
     Line::from(vec![
         Span::styled(format!("  {key:<4}"), Style::default().fg(Color::Yellow)),
         Span::styled(desc.to_string(), Style::default().fg(Color::DarkGray)),
     ])
+}
+
+pub(super) fn render_scrollbar(
+    frame: &mut Frame,
+    area: Rect,
+    total: usize,
+    viewport: usize,
+    position: usize,
+) {
+    if total > viewport {
+        let max_scroll = total - viewport;
+        let mut state = ScrollbarState::new(max_scroll).position(position);
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(None)
+            .end_symbol(None);
+        frame.render_stateful_widget(scrollbar, area, &mut state);
+    }
 }
 
 pub(super) fn detail_kv(label: &str, value: &str) -> Line<'static> {
