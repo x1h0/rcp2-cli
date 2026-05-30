@@ -1,3 +1,4 @@
+use crate::device::model::DeviceModel;
 use crate::device::state::DeviceState;
 use crate::framing::{self, PacketResult};
 use crate::packet::PacketSerialize;
@@ -36,6 +37,7 @@ enum TxCommand {
 }
 
 pub struct DeviceConnection {
+    model: DeviceModel,
     state: DeviceState,
     event_rx: mpsc::Receiver<DeviceEvent>,
     tx_cmd: mpsc::Sender<TxCommand>,
@@ -52,6 +54,7 @@ impl DeviceConnection {
     pub fn open(
         mut rx_transport: Box<dyn Transport>,
         mut tx_transport: Box<dyn Transport>,
+        model: DeviceModel,
     ) -> crate::Result<Self> {
         info!("sending handshake");
         tx_transport.send(HANDSHAKE_BYTES)?;
@@ -82,6 +85,7 @@ impl DeviceConnection {
             .map_err(|e| crate::Error::Transport(format!("failed to spawn TX thread: {e}")))?;
 
         Ok(DeviceConnection {
+            model,
             state,
             event_rx,
             tx_cmd,
@@ -89,6 +93,11 @@ impl DeviceConnection {
             rx_thread: Some(rx_handle),
             tx_thread: Some(tx_handle),
         })
+    }
+
+    #[must_use]
+    pub fn model(&self) -> DeviceModel {
+        self.model
     }
 
     #[must_use]

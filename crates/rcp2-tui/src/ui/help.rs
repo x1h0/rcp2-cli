@@ -14,7 +14,10 @@ pub(super) fn render_help(frame: &mut Frame, area: Rect, app: &mut App) {
         Line::styled("  Pads View", Style::default().fg(Color::Cyan).bold()),
         hotkey_line("\u{2190}\u{2192}", "switch bank"),
         hotkey_line("\u{2191}\u{2193}", "select pad"),
-        hotkey_line("1-8", "select pad directly"),
+        hotkey_line(
+            &format!("1-{}", app.profile.pads_per_bank),
+            "select pad directly",
+        ),
     ];
 
     if send {

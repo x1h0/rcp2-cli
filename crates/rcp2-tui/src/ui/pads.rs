@@ -20,7 +20,7 @@ pub(super) fn render_pad_list(frame: &mut Frame, area: Rect, app: &App) {
         .join(" ");
 
     let inner_width = area.width.saturating_sub(4) as usize;
-    let cell_width = inner_width / 2;
+    let cell_width = inner_width / bank.cols;
     let name_max = cell_width.saturating_sub(5);
 
     let sep_line = Line::from(vec![
@@ -31,10 +31,10 @@ pub(super) fn render_pad_list(frame: &mut Frame, area: Rect, app: &App) {
     let mut lines: Vec<Line> = Vec::new();
     lines.push(sep_line.clone());
 
-    for row in 0..rcp2_core::PAD_ROWS {
+    for row in 0..bank.rows {
         let mut spans = Vec::new();
-        for col in 0..rcp2_core::PAD_COLS {
-            let display_idx = row * rcp2_core::PAD_COLS + col;
+        for col in 0..bank.cols {
+            let display_idx = row * bank.cols + col;
             let selected = display_idx == app.selected_pad;
 
             if col > 0 {
@@ -87,7 +87,7 @@ pub(super) fn render_pad_list(frame: &mut Frame, area: Rect, app: &App) {
             }
         }
         lines.push(Line::from(spans));
-        if row < rcp2_core::PAD_ROWS - 1 {
+        if row < bank.rows - 1 {
             lines.push(sep_line.clone());
         }
     }

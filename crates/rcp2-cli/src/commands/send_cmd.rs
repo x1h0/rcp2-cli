@@ -19,7 +19,7 @@ pub fn send(ctx: &Context, hex: &str) -> Result<(), Box<dyn std::error::Error>> 
     }
 
     let hid_api = hidapi::HidApi::new()?;
-    let mut transport = HidTransport::open(&hid_api)?;
+    let (mut transport, _model) = HidTransport::open(&hid_api)?;
 
     info!("sending {} bytes", bytes.len());
     transport.send(&bytes)?;

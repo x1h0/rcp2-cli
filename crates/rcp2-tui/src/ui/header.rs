@@ -25,15 +25,13 @@ pub(super) fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         Style::default().fg(Color::DarkGray).bold()
     };
 
+    let title = if app.connected {
+        format!(" {} ", app.profile.display_name)
+    } else {
+        format!(" {} [DISCONNECTED] ", app.profile.display_name)
+    };
     let mut spans = vec![
-        Span::styled(
-            if app.connected {
-                " R\u{00D8}DECaster Pro II "
-            } else {
-                " R\u{00D8}DECaster Pro II [DISCONNECTED] "
-            },
-            title_style,
-        ),
+        Span::styled(title, title_style),
         Span::styled("\u{2502} ", sep),
         Span::styled(&vm.system.firmware, Style::default().fg(Color::DarkGray)),
         Span::styled(" \u{2502} ", sep),

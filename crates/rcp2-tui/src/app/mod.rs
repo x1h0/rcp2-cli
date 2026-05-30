@@ -4,7 +4,7 @@ mod transfer_ops;
 use crate::detail_form::DetailForm;
 use crate::transfer::{PadDownload, PadUpload, TransferState, TransferStatus};
 use log::{info, warn};
-use rcp2_core::{BankView, DeviceViewModel, PADS_PER_BANK, PadInfo, RecordingStatus};
+use rcp2_core::{BankView, DeviceProfile, DeviceViewModel, PadInfo, RecordingStatus};
 use rcp2_protocol::device::{DeviceConnection, DeviceEvent};
 use rcp2_protocol::transport::hid::HidTransport;
 use rcp2_protocol::types::Value;
@@ -49,6 +49,7 @@ pub enum ModalState {
 
 pub struct App {
     pub(super) conn: DeviceConnection,
+    pub profile: &'static DeviceProfile,
     pub vm: DeviceViewModel,
     pub selected_pad: usize,
     pub status: String,
@@ -74,17 +75,18 @@ pub struct App {
 impl App {
     pub fn connect(allow_send: bool) -> Result<Self, Box<dyn std::error::Error>> {
         let hid_api = hidapi::HidApi::new()?;
-        let (rx, tx) = HidTransport::open_pair(&hid_api)?;
-        let conn = DeviceConnection::open(Box::new(rx), Box::new(tx))?;
+        let ((rx, tx), model) = HidTransport::open_pair(&hid_api)?;
+        let conn = DeviceConnection::open(Box::new(rx), Box::new(tx), model)?;
+        let profile = model.profile();
 
         info!("waiting for device state...");
         conn.wait_for_state()?;
 
         let state = conn.state().snapshot()?;
-        let vm = DeviceViewModel::from_state(&state);
+        let vm = DeviceViewModel::from_state(&state, profile);
 
         info!(
-            "connected: {} pads, {} faders, FW {}",
+            "connected to {model}: {} pads, {} faders, FW {}",
             vm.pads.len(),
             vm.faders.len(),
             vm.system.firmware
@@ -92,6 +94,7 @@ impl App {
 
         Ok(App {
             conn,
+            profile,
             vm,
             selected_pad: 0,
             status: if allow_send {
@@ -148,8 +151,9 @@ impl App {
                         && indices[0] == rcp2_protocol::device::PHYSICAL_INTERFACE_IDX
                     {
                         let button_pos =
-                            indices[1].saturating_sub(rcp2_protocol::device::PADBUTTON_OFFSET);
-                        let pad_idx = self.vm.selected_bank * PADS_PER_BANK + button_pos;
+                            indices[1].saturating_sub(self.profile.padbutton_offset);
+                        let pad_idx =
+                            self.vm.selected_bank * self.profile.pads_per_bank + button_pos;
                         self.modal = ModalState::None;
                         self.detail_form = Some(DetailForm::new_pad(pad_idx));
                         self.status = format!(
@@ -287,14 +291,15 @@ impl App {
     pub fn selected_pad_info(&self) -> Option<&PadInfo> {
         let logical = self.logical_pad_position();
         let bank = self.vm.selected_bank;
+        let ppb = self.profile.pads_per_bank;
         self.vm
             .pads
             .iter()
-            .find(|p| p.bank() == bank && p.position_in_bank() == logical)
+            .find(|p| p.bank(ppb) == bank && p.position_in_bank(ppb) == logical)
     }
 
     pub(super) fn logical_pad_position(&self) -> usize {
-        BankView::logical_index(self.selected_pad)
+        BankView::logical_index(self.selected_pad, self.profile)
     }
 
     pub fn toggle_main_view(&mut self) {
@@ -394,15 +399,16 @@ impl App {
     }
 
     pub fn next_pad(&mut self) {
-        self.selected_pad = (self.selected_pad + 1) % PADS_PER_BANK;
+        self.selected_pad = (self.selected_pad + 1) % self.profile.pads_per_bank;
     }
 
     pub fn prev_pad(&mut self) {
-        self.selected_pad = (self.selected_pad + PADS_PER_BANK - 1) % PADS_PER_BANK;
+        let ppb = self.profile.pads_per_bank;
+        self.selected_pad = (self.selected_pad + ppb - 1) % ppb;
     }
 
     pub fn select_pad(&mut self, idx: usize) {
-        if idx < PADS_PER_BANK {
+        if idx < self.profile.pads_per_bank {
             self.selected_pad = idx;
         }
     }

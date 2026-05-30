@@ -4,7 +4,7 @@ use clap::Parser;
 use log::LevelFilter;
 
 #[derive(Parser)]
-#[command(name = "rcp2-cli", about = "RodeCaster Pro II management tool")]
+#[command(name = "rcp2-cli", about = "R\u{00D8}DECaster management tool")]
 struct Cli {
     /// Increase verbosity (-v, -vv, -vvv)
     #[arg(short, long, action = clap::ArgAction::Count, global = true)]

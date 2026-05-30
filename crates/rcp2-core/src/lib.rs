@@ -1,15 +1,13 @@
 pub mod ops;
 mod pad;
 
-pub use pad::{
-    BankView, PAD_COLS, PAD_ROWS, PADS_PER_BANK, PHYSICAL_ORDER, PadColor, PadInfo, PadType,
-};
+pub use pad::{BankView, PadColor, PadInfo, PadType};
+pub use rcp2_protocol::device::{DeviceModel, DeviceProfile};
 
 use rcp2_protocol::types::{Structured, Value};
 
-pub const MAX_BANKS: usize = 8;
-
 pub struct DeviceViewModel {
+    pub profile: &'static DeviceProfile,
     pub selected_bank: usize,
     pub soundpads_idx: Option<usize>,
     pub pads: Vec<PadInfo>,
@@ -22,9 +20,6 @@ pub struct DeviceViewModel {
     pub system: SystemInfo,
     pub network: NetworkInfo,
 }
-
-pub const PHYSICAL_FADERS: usize = 6;
-pub const VIRTUAL_FADERS: usize = 3;
 
 #[derive(Debug, Clone, Default)]
 pub struct FaderInfo {
@@ -124,7 +119,7 @@ pub struct NetworkInfo {
 
 impl DeviceViewModel {
     #[must_use]
-    pub fn from_state(state: &Structured) -> Self {
+    pub fn from_state(state: &Structured, profile: &'static DeviceProfile) -> Self {
         let selected_bank = find_node(state, "GUI")
             .and_then(|gui| get_u32_prop(gui, "selectedBank"))
             .unwrap_or(0) as usize;
@@ -142,7 +137,7 @@ impl DeviceViewModel {
             })
             .unwrap_or_default();
 
-        let faders = extract_faders(state);
+        let faders = extract_faders(state, profile);
         let pots = extract_pots(state);
         let channels = extract_channels(state);
         let recorder = extract_recorder(state);
@@ -152,6 +147,7 @@ impl DeviceViewModel {
         let network = extract_network(state);
 
         DeviceViewModel {
+            profile,
             selected_bank,
             soundpads_idx,
             pads,
@@ -168,7 +164,7 @@ impl DeviceViewModel {
 
     #[must_use]
     pub fn bank_view(&self, bank: usize) -> BankView {
-        BankView::from_pads(&self.pads, bank)
+        BankView::from_pads(&self.pads, bank, self.profile)
     }
 
     #[must_use]
@@ -178,7 +174,7 @@ impl DeviceViewModel {
 
     #[must_use]
     pub fn bank_count(&self) -> usize {
-        MAX_BANKS
+        self.profile.max_banks
     }
 
     pub fn has_storage(&self) -> bool {
@@ -186,14 +182,15 @@ impl DeviceViewModel {
     }
 
     pub fn refresh(&mut self, state: &Structured) {
-        *self = Self::from_state(state);
+        let profile = self.profile;
+        *self = Self::from_state(state, profile);
     }
 }
 
-fn extract_faders(state: &Structured) -> Vec<FaderInfo> {
+fn extract_faders(state: &Structured, profile: &DeviceProfile) -> Vec<FaderInfo> {
     let channels = extract_channels(state);
     let mix_nodes: Vec<&Structured> = state.children.iter().filter(|c| c.name == "MIX").collect();
-    let total = (PHYSICAL_FADERS + VIRTUAL_FADERS).min(channels.len());
+    let total = (profile.physical_faders + profile.virtual_faders).min(channels.len());
 
     channels[..total]
         .iter()

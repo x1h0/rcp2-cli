@@ -4,7 +4,7 @@ use rcp2_protocol::transport::hid::{HidTransport, PortType};
 
 pub fn connect(ctx: &Context) -> Result<(), Box<dyn std::error::Error>> {
     if ctx.offline {
-        println!("offline mode: would connect to RodeCaster Pro II");
+        println!("offline mode: would connect to R\u{00D8}DECaster device");
         return Ok(());
     }
 
@@ -12,7 +12,7 @@ pub fn connect(ctx: &Context) -> Result<(), Box<dyn std::error::Error>> {
     let devices = HidTransport::enumerate(&hid_api);
 
     if devices.is_empty() {
-        println!("no RodeCaster Pro II devices found");
+        println!("no supported R\u{00D8}DECaster devices found");
         return Ok(());
     }
 

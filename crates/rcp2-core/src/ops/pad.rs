@@ -1,6 +1,6 @@
 use super::{GUI_IDX, SYSTEM_IDX};
 use log::{info, warn};
-use rcp2_protocol::device::{DeviceConnection, PADBUTTON_OFFSET, PHYSICAL_INTERFACE_IDX};
+use rcp2_protocol::device::{DeviceConnection, DeviceProfile, PHYSICAL_INTERFACE_IDX};
 use rcp2_protocol::packet::child_added::ChildAddedPacket;
 use rcp2_protocol::types::Value;
 use std::time::Duration;
@@ -13,8 +13,12 @@ const PROPERTY_UPDATE_DELAY: Duration = Duration::from_millis(30);
 ///
 /// # Errors
 /// Returns an error if sending the property update fails.
-pub fn tap_pad(conn: &DeviceConnection, pad_position: usize) -> rcp2_protocol::Result<()> {
-    let button_idx = PADBUTTON_OFFSET + pad_position;
+pub fn tap_pad(
+    conn: &DeviceConnection,
+    pad_position: usize,
+    profile: &DeviceProfile,
+) -> rcp2_protocol::Result<()> {
+    let button_idx = profile.padbutton_offset + pad_position;
     let indices = vec![PHYSICAL_INTERFACE_IDX, button_idx];
     conn.send_property_update(
         indices.clone(),

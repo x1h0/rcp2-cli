@@ -2,7 +2,6 @@ use super::{App, ConfirmAction, ConfirmDialog};
 use crate::detail_form::{DetailForm, FieldKind};
 use crate::transfer::{PadUpload, PadUploadStatus};
 use log::info;
-use rcp2_core::PADS_PER_BANK;
 use rcp2_core::ops::pad as pad_ops;
 use rcp2_protocol::types::Value;
 
@@ -12,7 +11,7 @@ impl App {
             self.status = "send disabled (start with --allow-send)".into();
             return;
         }
-        if let Err(e) = pad_ops::tap_pad(&self.conn, self.logical_pad_position()) {
+        if let Err(e) = pad_ops::tap_pad(&self.conn, self.logical_pad_position(), self.profile) {
             self.status = format!("trigger failed: {e}");
         }
     }
@@ -60,7 +59,8 @@ impl App {
     pub fn open_detail_form(&mut self) {
         let Some(pad) = self.selected_pad_info() else {
             if self.allow_send {
-                let pad_idx = self.vm.selected_bank * PADS_PER_BANK + self.logical_pad_position();
+                let pad_idx =
+                    self.vm.selected_bank * self.profile.pads_per_bank + self.logical_pad_position();
                 self.detail_form = Some(DetailForm::new_pad(pad_idx));
             } else {
                 self.status = "empty pad (--allow-send to configure)".into();

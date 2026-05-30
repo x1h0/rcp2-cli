@@ -1,12 +1,7 @@
+use rcp2_protocol::device::DeviceProfile;
 use rcp2_protocol::types::Structured;
 
 use crate::{get_bool, get_f64, get_string, get_u32};
-
-pub const PADS_PER_BANK: usize = 8;
-pub const PAD_ROWS: usize = 4;
-pub const PAD_COLS: usize = 2;
-
-pub const PHYSICAL_ORDER: [usize; PADS_PER_BANK] = [0, 4, 1, 5, 2, 6, 3, 7];
 
 #[derive(Debug, Clone)]
 pub struct PadInfo {
@@ -51,13 +46,13 @@ impl PadInfo {
     }
 
     #[must_use]
-    pub fn bank(&self) -> usize {
-        self.idx / PADS_PER_BANK
+    pub fn bank(&self, pads_per_bank: usize) -> usize {
+        self.idx / pads_per_bank
     }
 
     #[must_use]
-    pub fn position_in_bank(&self) -> usize {
-        self.idx % PADS_PER_BANK
+    pub fn position_in_bank(&self, pads_per_bank: usize) -> usize {
+        self.idx % pads_per_bank
     }
 
     #[must_use]
@@ -158,31 +153,46 @@ impl PadColor {
 
 pub struct BankView {
     pub bank: usize,
-    pub pads: [Option<PadInfo>; PADS_PER_BANK],
+    pub pads: Vec<Option<PadInfo>>,
+    pub rows: usize,
+    pub cols: usize,
 }
 
 impl BankView {
     #[must_use]
-    pub fn from_pads(all_pads: &[PadInfo], bank: usize) -> Self {
-        let mut by_position: [Option<PadInfo>; PADS_PER_BANK] = Default::default();
+    pub fn from_pads(all_pads: &[PadInfo], bank: usize, profile: &DeviceProfile) -> Self {
+        let pads_per_bank = profile.pads_per_bank;
+        let order = profile.physical_order;
+
+        let mut by_position: Vec<Option<PadInfo>> = vec![None; pads_per_bank];
         for pad in all_pads {
-            if pad.bank() == bank {
-                let pos = pad.position_in_bank();
-                if pos < PADS_PER_BANK {
+            if pad.bank(pads_per_bank) == bank {
+                let pos = pad.position_in_bank(pads_per_bank);
+                if pos < pads_per_bank {
                     by_position[pos] = Some(pad.clone());
                 }
             }
         }
-        let mut pads: [Option<PadInfo>; PADS_PER_BANK] = Default::default();
-        for (display_idx, &logical_idx) in PHYSICAL_ORDER.iter().enumerate() {
-            pads[display_idx].clone_from(&by_position[logical_idx]);
+
+        let mut pads: Vec<Option<PadInfo>> = vec![None; pads_per_bank];
+        for (display_idx, &logical_idx) in order.iter().enumerate() {
+            if display_idx < pads_per_bank && logical_idx < pads_per_bank {
+                pads[display_idx].clone_from(&by_position[logical_idx]);
+            }
         }
-        BankView { bank, pads }
+
+        BankView {
+            bank,
+            pads,
+            rows: profile.pad_rows,
+            cols: profile.pad_cols,
+        }
     }
 
     #[must_use]
-    pub fn logical_index(display_index: usize) -> usize {
-        PHYSICAL_ORDER
+    pub fn logical_index(display_index: usize, profile: &DeviceProfile) -> usize {
+        profile
+            .physical_order
             .get(display_index)
             .copied()
             .unwrap_or(display_index)
@@ -192,6 +202,7 @@ impl BankView {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rcp2_protocol::device::model;
     use rcp2_protocol::types::{Structured, Value};
     use std::collections::HashMap;
 
@@ -250,8 +261,8 @@ mod tests {
         assert_eq!(pad.file_path, "sound.wav");
         assert!(pad.env_start.abs() < f64::EPSILON);
         assert!((pad.env_stop - 1.0).abs() < f64::EPSILON);
-        assert_eq!(pad.bank(), 0);
-        assert_eq!(pad.position_in_bank(), 5);
+        assert_eq!(pad.bank(8), 0);
+        assert_eq!(pad.position_in_bank(8), 5);
     }
 
     #[test]
@@ -275,14 +286,35 @@ mod tests {
     }
 
     #[test]
-    fn bank_view_physical_order() {
+    fn bank_view_physical_order_pro_ii() {
+        let profile = &model::PRO_II;
         let pads: Vec<PadInfo> = (0..8).map(make_pad).collect();
-        let view = BankView::from_pads(&pads, 0);
+        let view = BankView::from_pads(&pads, 0, profile);
 
-        for (display_idx, &expected_pos) in PHYSICAL_ORDER.iter().enumerate() {
+        for (display_idx, &expected_pos) in profile.physical_order.iter().enumerate() {
             let pad = view.pads[display_idx].as_ref().unwrap();
             assert_eq!(
-                pad.position_in_bank(),
+                pad.position_in_bank(profile.pads_per_bank),
+                expected_pos,
+                "display_idx={display_idx}"
+            );
+        }
+    }
+
+    #[test]
+    fn bank_view_physical_order_duo() {
+        let profile = &model::DUO;
+        let pads: Vec<PadInfo> = (0..6).map(make_pad).collect();
+        let view = BankView::from_pads(&pads, 0, profile);
+
+        assert_eq!(view.pads.len(), 6);
+        assert_eq!(view.rows, 3);
+        assert_eq!(view.cols, 2);
+
+        for (display_idx, &expected_pos) in profile.physical_order.iter().enumerate() {
+            let pad = view.pads[display_idx].as_ref().unwrap();
+            assert_eq!(
+                pad.position_in_bank(profile.pads_per_bank),
                 expected_pos,
                 "display_idx={display_idx}"
             );
@@ -291,28 +323,48 @@ mod tests {
 
     #[test]
     fn bank_view_filters_by_bank() {
+        let profile = &model::PRO_II;
         let mut pads = Vec::new();
         for i in 0..16 {
             pads.push(make_pad(i));
         }
 
-        let view = BankView::from_pads(&pads, 1);
+        let view = BankView::from_pads(&pads, 1, profile);
         assert_eq!(view.bank, 1);
         for slot in &view.pads {
             let pad = slot.as_ref().unwrap();
-            assert_eq!(pad.bank(), 1);
+            assert_eq!(pad.bank(profile.pads_per_bank), 1);
         }
     }
 
     #[test]
-    fn logical_index_mapping() {
-        assert_eq!(BankView::logical_index(0), 0);
-        assert_eq!(BankView::logical_index(1), 4);
-        assert_eq!(BankView::logical_index(2), 1);
-        assert_eq!(BankView::logical_index(3), 5);
-        assert_eq!(BankView::logical_index(4), 2);
-        assert_eq!(BankView::logical_index(5), 6);
-        assert_eq!(BankView::logical_index(6), 3);
-        assert_eq!(BankView::logical_index(7), 7);
+    fn logical_index_mapping_pro_ii() {
+        let profile = &model::PRO_II;
+        assert_eq!(BankView::logical_index(0, profile), 0);
+        assert_eq!(BankView::logical_index(1, profile), 4);
+        assert_eq!(BankView::logical_index(2, profile), 1);
+        assert_eq!(BankView::logical_index(3, profile), 5);
+        assert_eq!(BankView::logical_index(4, profile), 2);
+        assert_eq!(BankView::logical_index(5, profile), 6);
+        assert_eq!(BankView::logical_index(6, profile), 3);
+        assert_eq!(BankView::logical_index(7, profile), 7);
+    }
+
+    #[test]
+    fn logical_index_mapping_duo() {
+        let profile = &model::DUO;
+        assert_eq!(BankView::logical_index(0, profile), 0);
+        assert_eq!(BankView::logical_index(1, profile), 3);
+        assert_eq!(BankView::logical_index(2, profile), 1);
+        assert_eq!(BankView::logical_index(3, profile), 4);
+        assert_eq!(BankView::logical_index(4, profile), 2);
+        assert_eq!(BankView::logical_index(5, profile), 5);
+    }
+
+    #[test]
+    fn bank_calculation_duo() {
+        let pad = make_pad(7);
+        assert_eq!(pad.bank(6), 1);
+        assert_eq!(pad.position_in_bank(6), 1);
     }
 }

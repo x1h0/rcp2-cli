@@ -43,7 +43,7 @@ pub fn run_with_disclaimer(
 }
 
 fn cli_disclaimer() -> Result<(), Box<dyn std::error::Error>> {
-    eprintln!("WARNING: This tool communicates with your RodeCaster Pro II");
+    eprintln!("WARNING: This tool communicates with your R\u{00D8}DECaster device");
     eprintln!("via USB HID using a reverse-engineered protocol.");
     eprintln!();
     eprintln!("Known issue: after closing, device buttons may freeze.");
@@ -70,7 +70,7 @@ fn open_connection(ctx: &Context) -> Result<DeviceConnection, Box<dyn std::error
     }
 
     let hid_api = hidapi::HidApi::new()?;
-    let (rx, tx) = HidTransport::open_pair(&hid_api)?;
-    let conn = DeviceConnection::open(Box::new(rx), Box::new(tx))?;
+    let ((rx, tx), model) = HidTransport::open_pair(&hid_api)?;
+    let conn = DeviceConnection::open(Box::new(rx), Box::new(tx), model)?;
     Ok(conn)
 }

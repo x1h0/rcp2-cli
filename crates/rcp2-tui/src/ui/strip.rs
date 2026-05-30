@@ -1,16 +1,18 @@
 use crate::app::App;
 use ratatui::prelude::*;
 use ratatui::widgets::{Block, Borders, Paragraph};
-use rcp2_core::{PHYSICAL_FADERS, VIRTUAL_FADERS};
 
 use super::util::level_bar;
 
 pub(super) fn render_device_strip(frame: &mut Frame, area: Rect, app: &App) {
     let vm = &app.vm;
+    let profile = app.profile;
 
     let pot_count = vm.pots.len().min(4);
-    let physical = PHYSICAL_FADERS.min(vm.faders.len());
-    let virtual_count = VIRTUAL_FADERS.min(vm.faders.len().saturating_sub(PHYSICAL_FADERS));
+    let physical = profile.physical_faders.min(vm.faders.len());
+    let virtual_count = profile
+        .virtual_faders
+        .min(vm.faders.len().saturating_sub(profile.physical_faders));
 
     let has_pots = pot_count > 0;
     let has_physical = physical > 0;
@@ -59,7 +61,7 @@ pub(super) fn render_device_strip(frame: &mut Frame, area: Rect, app: &App) {
         render_virtual_section(
             frame,
             section_areas[sec],
-            &vm.faders[PHYSICAL_FADERS..PHYSICAL_FADERS + virtual_count],
+            &vm.faders[profile.physical_faders..profile.physical_faders + virtual_count],
         );
     }
 }

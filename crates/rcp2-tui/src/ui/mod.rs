@@ -31,7 +31,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 }
 
 pub fn render_connecting(frame: &mut Frame, area: Rect) {
-    let text = Paragraph::new("Connecting to RodeCaster Pro II...")
+    let text = Paragraph::new("Connecting to R\u{00D8}DECaster...")
         .alignment(Alignment::Center)
         .style(Style::default().fg(Color::DarkGray));
 
@@ -64,7 +64,7 @@ pub fn render_disclaimer(frame: &mut Frame, area: Rect, allow_send: bool) {
         ),
         Line::raw(""),
         Line::styled(
-            "This tool communicates directly with your RodeCaster Pro II",
+            "This tool communicates directly with your R\u{00D8}DECaster",
             warn,
         ),
         Line::styled("via USB HID using a reverse-engineered protocol.", warn),
