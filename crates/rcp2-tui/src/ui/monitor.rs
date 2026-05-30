@@ -1,6 +1,8 @@
 use crate::app::App;
 use ratatui::prelude::*;
-use ratatui::widgets::{Block, Borders, List, ListItem, Padding};
+use ratatui::widgets::{
+    Block, Borders, List, ListItem, Padding, Scrollbar, ScrollbarOrientation, ScrollbarState,
+};
 
 pub(super) fn render_monitor(frame: &mut Frame, area: Rect, app: &App) {
     let inner_height = area.height.saturating_sub(2) as usize;
@@ -28,7 +30,7 @@ pub(super) fn render_monitor(frame: &mut Frame, area: Rect, app: &App) {
         })
         .collect();
 
-    let title = format!(" Monitor ({total}) ");
+    let title = format!(" Monitor ({}) ", app.log_total);
     let list = List::new(items).block(
         Block::default()
             .title(title)
@@ -38,4 +40,14 @@ pub(super) fn render_monitor(frame: &mut Frame, area: Rect, app: &App) {
     );
 
     frame.render_widget(list, area);
+
+    if total > inner_height {
+        let max_scroll = total.saturating_sub(inner_height);
+        let position = max_scroll.saturating_sub(app.log_scroll);
+        let mut state = ScrollbarState::new(max_scroll).position(position);
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(None)
+            .end_symbol(None);
+        frame.render_stateful_widget(scrollbar, area, &mut state);
+    }
 }

@@ -55,6 +55,7 @@ pub struct App {
     pub connected: bool,
     pub main_view: MainView,
     pub event_log: VecDeque<String>,
+    pub log_total: usize,
     pub log_scroll: usize,
     pub help_scroll: u16,
     pub allow_send: bool,
@@ -100,6 +101,7 @@ impl App {
             connected: true,
             main_view: MainView::Pads,
             event_log: VecDeque::with_capacity(MAX_LOG_ENTRIES),
+            log_total: 0,
             log_scroll: 0,
             help_scroll: 0,
             allow_send,
@@ -239,9 +241,12 @@ impl App {
             self.event_log.pop_front();
         }
         self.event_log.push_back(msg);
+        self.log_total += 1;
         if self.log_scroll > 0 {
             self.log_scroll += 1;
         }
+        let max = self.event_log.len().saturating_sub(1);
+        self.log_scroll = self.log_scroll.min(max);
     }
 
     fn update_rec_timer(&mut self, prev: RecordingStatus) {
