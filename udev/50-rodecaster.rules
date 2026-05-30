@@ -1,0 +1,15 @@
+# RODECaster Pro II
+# No Multitrack
+KERNEL=="hidraw*", ATTRS{idVendor}=="19f7", ATTRS{idProduct}=="0037", TAG+="uaccess"
+# Multitrack Output & Input
+KERNEL=="hidraw*", ATTRS{idVendor}=="19f7", ATTRS{idProduct}=="0072", TAG+="uaccess"
+# Multitrack Output Only
+KERNEL=="hidraw*", ATTRS{idVendor}=="19f7", ATTRS{idProduct}=="0078", TAG+="uaccess"
+# Multitrack Input Only
+KERNEL=="hidraw*", ATTRS{idVendor}=="19f7", ATTRS{idProduct}=="0030", TAG+="uaccess"
+
+# RODECaster Pro II (firmware 1.7.3)
+# Multitrack dynamic Output & Input
+KERNEL=="hidraw*", ATTRS{idVendor}=="19f7", ATTRS{idProduct}=="0094", TAG+="uaccess"
+# Multitrack dynamic Output Only
+KERNEL=="hidraw*", ATTRS{idVendor}=="19f7", ATTRS{idProduct}=="0092", TAG+="uaccess"

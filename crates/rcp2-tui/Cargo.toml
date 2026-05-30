@@ -1,0 +1,15 @@
+[package]
+name = "rcp2-tui"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+rcp2-protocol = { path = "../rcp2-protocol", version = "0.1.0" }
+rcp2-core = { path = "../rcp2-core", version = "0.1.0" }
+hidapi = { workspace = true }
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+log = { workspace = true }
+serde_json = { workspace = true }
+rfd = { workspace = true }
