@@ -113,7 +113,7 @@ fn render_fader_section(
     let cols = Layout::horizontal(constraints).split(inner);
 
     for (i, fader) in faders.iter().enumerate() {
-        let pct = (fader.percent() * 100.0) as u32;
+        let pct = (fader.percent() * 100.0).round() as u32;
         let bar = level_bar(fader.percent(), 1.0);
         let color = fader_color(fader.mute, fader.cue);
         let suffix = fader_suffix(fader.mute, fader.cue);
@@ -139,7 +139,7 @@ fn render_virtual_section(frame: &mut Frame, area: Rect, faders: &[rcp2_core::Fa
     for (i, fader) in faders.iter().enumerate() {
         let label = format!("V{}", i + 1);
         if fader.configured {
-            let pct = (fader.percent() * 100.0) as u32;
+            let pct = (fader.percent() * 100.0).round() as u32;
             let bar = level_bar(fader.percent(), 1.0);
             let color = fader_color(fader.mute, fader.cue);
             render_channel(frame, cols[i], &label, &bar, Some(pct), color);
