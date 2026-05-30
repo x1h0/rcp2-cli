@@ -67,7 +67,7 @@ impl Value {
                     let (next, value) = Self::parse(current)?;
                     values.push(value);
                     let consumed = current.len().saturating_sub(next.len());
-                    if consumed > remaining {
+                    if consumed == 0 || consumed > remaining {
                         return Err(nom::Err::Error(Error::new(current, ErrorKind::Verify)));
                     }
                     remaining -= consumed;
