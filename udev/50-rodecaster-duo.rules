@@ -1,2 +1,0 @@
-# RØDECaster Duo
-KERNEL=="hidraw*", ATTRS{idVendor}=="19f7", ATTRS{idProduct}=="0050", TAG+="uaccess"

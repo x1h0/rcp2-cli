@@ -9,7 +9,7 @@
 Unofficial command-line tool and TUI for managing the RØDECaster Pro II via USB HID.
 
 **This is experimental software. Use at your own risk.**
-The protocol was reverse-engineered and there is no guarantee for correctness or safety.
+The protocol was reverse-engineered from USB captures, based on [JUCE ValueTreeSynchroniser](https://docs.juce.com/master/classValueTreeSynchroniser.html), and tested only with firmware 1.7.3. Other versions may not work, and there is no guarantee for correctness or safety.
 Using this tool may freeze your device, require a USB replug to recover, or corrupt your configuration and sounds.
 
 <p align="center">
@@ -36,7 +36,9 @@ Many device features are not accessible through this tool, including mixer/EQ/ef
 
 - Linux (uses hidraw backend)
 - RØDECaster Pro II connected via the main USB-C port
+- Rust toolchain (stable) with `cargo` to build and install
 - udev rules for non-root access (see below)
+- The `usbhid` quirk to avoid the on-exit device freeze (see [Preventing the Device Freeze](#preventing-the-device-freeze-recommended))
 - Build: `libudev-dev libwayland-dev` (Debian/Ubuntu) or `systemd-libs wayland` (Arch)
 - Runtime: `lsblk`, `udisksctl` (for transfer mode mount detection)
 
@@ -72,32 +74,52 @@ sudo udevadm trigger
 ## Usage
 
 ```sh
-# Read-only mode (safe, but device buttons may freeze on exit)
+# Read-only TUI
 rcp2-cli tui
 
-# With send capabilities (edit pads, upload sounds, control recording)
+# TUI with send capabilities (trigger/edit pads, upload sounds, control recording, transfer)
 rcp2-cli tui --allow-send
 
 # Skip the disclaimer screen
 rcp2-cli --i-know-what-i-do tui --allow-send
 
-# Or via environment variable
+# Or via environment variables
 RCP2_ACCEPT_RISK=1 RCP2_ALLOW_SEND=1 rcp2-cli tui
 ```
 
-Other commands:
+Commands:
 
 - `rcp2-cli connect` - show device info
 - `rcp2-cli dump` - dump full state tree as JSON
 - `rcp2-cli monitor` - stream property updates in real-time
+- `rcp2-cli record status [--json]` - show recording status
+- `rcp2-cli record interactive` - live recording control (start/pause/stop)
+- `rcp2-cli transfer interactive [--storage emmc|sd]` - browse storage and download files
+- `rcp2-cli fader list [--json]` - list faders with mute/listen state and level
+- `rcp2-cli fader mute <N> [on|off|toggle]` - mute a fader (0-based index)
+- `rcp2-cli fader listen <N> [on|off|toggle]` - toggle the Listen button for a fader
+
+Global flags: `-v`/`-vv` for verbosity, `--dry-run`, and `--offline --state-file <path>`.
 
 Press `?` inside the TUI to see all available hotkeys.
 
 
-## Known Issues
+## Preventing the Device Freeze (recommended)
 
-- After closing the app, device buttons may freeze until the USB cable is replugged. This appears to be a Linux-specific issue with how the HID connection is closed.
-- The protocol is based on [JUCE ValueTreeSynchroniser](https://docs.juce.com/master/classValueTreeSynchroniser.html) and was reverse-engineered from USB captures. Tested with firmware 1.7.3. Other versions may not work correctly.
+The firmware sends its updates with a blocking write and no timeout, and Linux stops
+reading the device once the last program closes its handle. The device then blocks on
+its next update and freezes until you replug the cable. The kernel's
+`HID_QUIRK_ALWAYS_POLL` quirk keeps the device drained at all times and avoids this.
+
+Add it to your kernel command line and reboot, with your product ID (from `lsusb -d 19f7:`)
+in place of `0x0037`:
+
+```
+usbhid.quirks=0x19f7:0x0037:0x00000400
+```
+
+With GRUB, append it to `GRUB_CMDLINE_LINUX_DEFAULT` in `/etc/default/grub`, then run
+`sudo grub-mkconfig -o /boot/grub/grub.cfg`.
 
 
 ## License

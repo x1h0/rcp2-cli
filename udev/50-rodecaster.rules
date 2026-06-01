@@ -13,3 +13,6 @@ KERNEL=="hidraw*", ATTRS{idVendor}=="19f7", ATTRS{idProduct}=="0030", TAG+="uacc
 KERNEL=="hidraw*", ATTRS{idVendor}=="19f7", ATTRS{idProduct}=="0094", TAG+="uaccess"
 # Multitrack dynamic Output Only
 KERNEL=="hidraw*", ATTRS{idVendor}=="19f7", ATTRS{idProduct}=="0092", TAG+="uaccess"
+
+# RODECaster Duo
+KERNEL=="hidraw*", ATTRS{idVendor}=="19f7", ATTRS{idProduct}=="0050", TAG+="uaccess"
