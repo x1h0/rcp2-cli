@@ -159,11 +159,11 @@ impl DetailForm {
         }
     }
 
-    pub fn from_pad(pad: &PadInfo, allow_send: bool) -> Self {
-        let mut fields = Self::common_fields(pad, allow_send);
+    pub fn from_pad(pad: &PadInfo, dry_run: bool) -> Self {
+        let mut fields = Self::common_fields(pad);
 
         if pad.pad_type == PadType::Sound {
-            fields.extend(Self::sound_fields(pad, allow_send));
+            fields.extend(Self::sound_fields(pad));
         }
 
         if !pad.file_path.is_empty() {
@@ -175,7 +175,7 @@ impl DetailForm {
             });
         }
 
-        fields.extend(Self::action_fields(pad, allow_send));
+        fields.extend(Self::action_fields(pad, dry_run));
 
         DetailForm {
             fields,
@@ -189,29 +189,19 @@ impl DetailForm {
         }
     }
 
-    fn common_fields(pad: &PadInfo, allow_send: bool) -> Vec<FormField> {
-        let editable = if allow_send {
-            FieldKind::Text
-        } else {
-            FieldKind::ReadOnly
-        };
-
+    fn common_fields(pad: &PadInfo) -> Vec<FormField> {
         let (r, g, b) = pad.color.to_rgb();
 
         vec![
             FormField {
                 label: "Name".into(),
-                kind: editable,
+                kind: FieldKind::Text,
                 value_display: pad.name.clone(),
                 property: Some("padName".into()),
             },
             FormField {
                 label: "Color".into(),
-                kind: if allow_send {
-                    FieldKind::ColorCycle
-                } else {
-                    FieldKind::ReadOnly
-                },
+                kind: FieldKind::ColorCycle,
                 value_display: format!("#{r:02x}{g:02x}{b:02x}"),
                 property: Some("padColourIndex".into()),
             },
@@ -223,46 +213,30 @@ impl DetailForm {
             },
             FormField {
                 label: "Gain".into(),
-                kind: if allow_send {
-                    FieldKind::Number
-                } else {
-                    FieldKind::ReadOnly
-                },
+                kind: FieldKind::Number,
                 value_display: format!("{:.1} dB", pad.gain),
                 property: Some("padGain".into()),
             },
         ]
     }
 
-    fn sound_fields(pad: &PadInfo, allow_send: bool) -> Vec<FormField> {
+    fn sound_fields(pad: &PadInfo) -> Vec<FormField> {
         let mut fields = vec![
             FormField {
                 label: "Mode".into(),
-                kind: if allow_send {
-                    FieldKind::Cycle
-                } else {
-                    FieldKind::ReadOnly
-                },
+                kind: FieldKind::Cycle,
                 value_display: play_mode_label(pad.play_mode),
                 property: Some("padPlayMode".into()),
             },
             FormField {
                 label: "Loop".into(),
-                kind: if allow_send {
-                    FieldKind::Toggle
-                } else {
-                    FieldKind::ReadOnly
-                },
+                kind: FieldKind::Toggle,
                 value_display: if pad.looping { "Yes" } else { "No" }.into(),
                 property: Some("padLoop".into()),
             },
             FormField {
                 label: "Replay".into(),
-                kind: if allow_send {
-                    FieldKind::Toggle
-                } else {
-                    FieldKind::ReadOnly
-                },
+                kind: FieldKind::Toggle,
                 value_display: if pad.replay { "Yes" } else { "No" }.into(),
                 property: Some("padReplay".into()),
             },
@@ -286,45 +260,12 @@ impl DetailForm {
         fields
     }
 
-    fn action_fields(pad: &PadInfo, allow_send: bool) -> Vec<FormField> {
+    fn action_fields(pad: &PadInfo, dry_run: bool) -> Vec<FormField> {
         let is_sound = pad.pad_type == PadType::Sound;
         let has_file = !pad.file_path.is_empty();
         let mut fields = vec![];
 
-        if allow_send {
-            if is_sound && has_file {
-                fields.push(FormField {
-                    label: "Download sound".into(),
-                    kind: FieldKind::Action,
-                    value_display: String::new(),
-                    property: Some("download".into()),
-                });
-            }
-            if is_sound {
-                fields.push(FormField {
-                    label: if has_file {
-                        "Replace sound".into()
-                    } else {
-                        "Upload sound".into()
-                    },
-                    kind: FieldKind::Action,
-                    value_display: String::new(),
-                    property: Some("upload".into()),
-                });
-            }
-            fields.push(FormField {
-                label: "Play / Stop".into(),
-                kind: FieldKind::Action,
-                value_display: String::new(),
-                property: Some("play".into()),
-            });
-            fields.push(FormField {
-                label: "Delete pad".into(),
-                kind: FieldKind::Action,
-                value_display: String::new(),
-                property: Some("delete".into()),
-            });
-        } else if is_sound && has_file {
+        if !dry_run && is_sound && has_file {
             fields.push(FormField {
                 label: "Download sound".into(),
                 kind: FieldKind::Action,
@@ -332,6 +273,30 @@ impl DetailForm {
                 property: Some("download".into()),
             });
         }
+        if !dry_run && is_sound {
+            fields.push(FormField {
+                label: if has_file {
+                    "Replace sound".into()
+                } else {
+                    "Upload sound".into()
+                },
+                kind: FieldKind::Action,
+                value_display: String::new(),
+                property: Some("upload".into()),
+            });
+        }
+        fields.push(FormField {
+            label: "Play / Stop".into(),
+            kind: FieldKind::Action,
+            value_display: String::new(),
+            property: Some("play".into()),
+        });
+        fields.push(FormField {
+            label: "Delete pad".into(),
+            kind: FieldKind::Action,
+            value_display: String::new(),
+            property: Some("delete".into()),
+        });
 
         fields
     }

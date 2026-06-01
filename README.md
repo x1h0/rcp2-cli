@@ -74,17 +74,20 @@ sudo udevadm trigger
 ## Usage
 
 ```sh
-# Read-only TUI
+# Launch the TUI (trigger/edit pads, upload sounds, control recording, transfer)
 rcp2-cli tui
 
-# TUI with send capabilities (trigger/edit pads, upload sounds, control recording, transfer)
-rcp2-cli tui --allow-send
-
 # Skip the disclaimer screen
-rcp2-cli --i-know-what-i-do tui --allow-send
+rcp2-cli --i-know-what-i-do tui
 
-# Or via environment variables
-RCP2_ACCEPT_RISK=1 RCP2_ALLOW_SEND=1 rcp2-cli tui
+# Or via environment variable
+RCP2_ACCEPT_RISK=1 rcp2-cli tui
+
+# Dry-run: connect and read normally, but log writes instead of sending them.
+# Transfer is disabled in dry-run. In the TUI the log never clutters the screen:
+# it is buffered during the session and printed when the TUI exits, or written
+# live if you redirect stderr:
+rcp2-cli tui --dry-run 2> trace.log
 ```
 
 Commands:
@@ -99,7 +102,7 @@ Commands:
 - `rcp2-cli fader mute <N> [on|off|toggle]` - mute a fader (0-based index)
 - `rcp2-cli fader listen <N> [on|off|toggle]` - toggle the Listen button for a fader
 
-Global flags: `-v`/`-vv` for verbosity, `--dry-run`, and `--offline --state-file <path>`.
+Global flags: `-v`/`-vv` for verbosity and `--dry-run` (log writes instead of sending them).
 
 Press `?` inside the TUI to see all available hotkeys.
 

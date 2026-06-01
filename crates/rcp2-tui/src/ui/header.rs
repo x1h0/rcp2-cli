@@ -67,6 +67,16 @@ pub(super) fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         ),
     ];
 
+    if app.dry_run {
+        spans.insert(
+            1,
+            Span::styled(
+                "[DRY-RUN] ",
+                Style::default().fg(Color::Yellow).bold(),
+            ),
+        );
+    }
+
     if vm.network.wifi_enabled && !vm.network.wifi_ssid.is_empty() {
         spans.push(Span::styled(" \u{2502} ", sep));
         spans.push(Span::styled(

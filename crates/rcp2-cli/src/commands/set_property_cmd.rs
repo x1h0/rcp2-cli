@@ -7,22 +7,12 @@ pub fn set_property(
     name: &str,
     value_str: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if ctx.offline {
-        println!("set-property requires a connected device");
-        return Ok(());
-    }
-
     let indices: Vec<usize> = indices_str
         .split(',')
         .map(|s| s.trim().parse())
         .collect::<Result<_, _>>()?;
 
     let value = parse_value(value_str)?;
-
-    if ctx.dry_run {
-        println!("dry-run: would set [{indices_str}] {name} = {value:?}");
-        return Ok(());
-    }
 
     let conn = super::open_connection(ctx)?;
     conn.wait_for_state()?;

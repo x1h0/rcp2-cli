@@ -2,11 +2,6 @@ use super::Context;
 use rcp2_protocol::device::DeviceEvent;
 
 pub fn monitor(ctx: &Context) -> Result<(), Box<dyn std::error::Error>> {
-    if ctx.offline {
-        println!("offline mode: nothing to monitor");
-        return Ok(());
-    }
-
     let conn = super::open_connection(ctx)?;
     println!("monitoring device events (Ctrl+C to stop)...");
 

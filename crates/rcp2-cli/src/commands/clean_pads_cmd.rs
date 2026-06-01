@@ -2,11 +2,6 @@ use super::Context;
 use rcp2_protocol::packet::child_removed::ChildRemovedPacket;
 
 pub fn clean_pads(ctx: &Context) -> Result<(), Box<dyn std::error::Error>> {
-    if ctx.offline || ctx.dry_run {
-        println!("clean-pads requires a connected device");
-        return Ok(());
-    }
-
     let conn = super::open_connection(ctx)?;
     conn.wait_for_state()?;
 

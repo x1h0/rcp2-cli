@@ -60,7 +60,7 @@ pub struct App {
     pub log_scroll: usize,
     pub help_scroll: u16,
     pub help_max_scroll: u16,
-    pub allow_send: bool,
+    pub dry_run: bool,
     pub has_transfer_tools: bool,
     pub detail_form: Option<DetailForm>,
     pub modal: ModalState,
@@ -73,10 +73,10 @@ pub struct App {
 }
 
 impl App {
-    pub fn connect(allow_send: bool) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn connect(dry_run: bool) -> Result<Self, Box<dyn std::error::Error>> {
         let hid_api = hidapi::HidApi::new()?;
         let ((rx, tx), model) = HidTransport::open_pair(&hid_api)?;
-        let conn = DeviceConnection::open(Box::new(rx), Box::new(tx), model)?;
+        let conn = DeviceConnection::open(Box::new(rx), Box::new(tx), model, dry_run)?;
         let profile = model.profile();
 
         info!("waiting for device state...");
@@ -97,10 +97,10 @@ impl App {
             profile,
             vm,
             selected_pad: 0,
-            status: if allow_send {
-                "connected (send enabled)".into()
+            status: if dry_run {
+                "connected (dry-run)".into()
             } else {
-                "connected (read-only)".into()
+                "connected".into()
             },
             connected: true,
             main_view: MainView::Pads,
@@ -109,7 +109,7 @@ impl App {
             log_scroll: 0,
             help_scroll: 0,
             help_max_scroll: 0,
-            allow_send,
+            dry_run,
             has_transfer_tools: rcp2_core::ops::transfer::tools_available(),
             detail_form: None,
             modal: ModalState::None,
@@ -381,9 +381,7 @@ impl App {
     }
 
     fn sync_bank_to_device(&self) {
-        if self.allow_send
-            && let Err(e) = rcp2_core::ops::pad::sync_bank(&self.conn, self.vm.selected_bank)
-        {
+        if let Err(e) = rcp2_core::ops::pad::sync_bank(&self.conn, self.vm.selected_bank) {
             warn!("failed to sync bank to device: {e}");
         }
     }

@@ -4,8 +4,8 @@ use rcp2_core::ops::pad as pad_ops;
 
 impl App {
     pub fn enter_transfer_view(&mut self) {
-        if !self.allow_send {
-            self.status = "transfer requires --allow-send".into();
+        if self.dry_run {
+            self.status = "transfer disabled in dry-run".into();
             return;
         }
         if !self.require_transfer_tools() {
@@ -125,8 +125,8 @@ impl App {
     }
 
     pub fn start_pad_download(&mut self) {
-        if !self.allow_send {
-            self.status = "download requires --allow-send".into();
+        if self.dry_run {
+            self.status = "download disabled in dry-run".into();
             return;
         }
         if !self.require_transfer_tools() {

@@ -20,9 +20,11 @@ use std::io::Write;
 
 pub struct Context {
     pub dry_run: bool,
-    pub offline: bool,
-    pub state_file: Option<String>,
     pub accepted: bool,
+}
+
+pub(crate) fn dry_run_suffix(ctx: &Context) -> &'static str {
+    if ctx.dry_run { " (dry-run)" } else { "" }
 }
 
 #[cfg(debug_assertions)]
@@ -42,9 +44,6 @@ pub fn run_with_disclaimer(
     ctx: &Context,
     f: impl FnOnce() -> Result<(), Box<dyn std::error::Error>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if ctx.offline {
-        return f();
-    }
     if !ctx.accepted {
         cli_disclaimer()?;
     }
@@ -74,13 +73,9 @@ fn cli_disclaimer() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn open_connection(ctx: &Context) -> Result<DeviceConnection, Box<dyn std::error::Error>> {
-    if ctx.offline {
-        return Err("offline mode: cannot open device connection".into());
-    }
-
     let hid_api = hidapi::HidApi::new()?;
     let ((rx, tx), model) = HidTransport::open_pair(&hid_api)?;
-    let conn = DeviceConnection::open(Box::new(rx), Box::new(tx), model)?;
+    let conn = DeviceConnection::open(Box::new(rx), Box::new(tx), model, ctx.dry_run)?;
     Ok(conn)
 }
 

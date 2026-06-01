@@ -45,7 +45,7 @@ pub fn render_connecting(frame: &mut Frame, area: Rect) {
     frame.render_widget(text, center);
 }
 
-pub fn render_disclaimer(frame: &mut Frame, area: Rect, allow_send: bool) {
+pub fn render_disclaimer(frame: &mut Frame, area: Rect) {
     let block = Block::default()
         .title(" Warning ")
         .title_style(Style::default().fg(Color::Red).bold())
@@ -72,21 +72,12 @@ pub fn render_disclaimer(frame: &mut Frame, area: Rect, allow_send: bool) {
         Line::styled("Known issue:", bold),
         Line::styled("  After closing this app, device buttons may freeze.", warn),
         Line::styled("  Replug the USB cable to recover.", warn),
+        Line::raw(""),
+        Line::styled("This tool can write to the device. Additionally:", bold),
+        Line::raw(""),
+        Line::styled("  - Sending data MAY freeze or brick your device", warn),
+        Line::styled("  - Your configuration or sounds could be corrupted", warn),
     ];
-
-    if allow_send {
-        lines.push(Line::raw(""));
-        lines.push(Line::styled("Send mode is enabled. Additionally:", bold));
-        lines.push(Line::raw(""));
-        lines.push(Line::styled(
-            "  - Sending data MAY freeze or brick your device",
-            warn,
-        ));
-        lines.push(Line::styled(
-            "  - Your configuration or sounds could be corrupted",
-            warn,
-        ));
-    }
 
     lines.push(Line::raw(""));
     lines.push(Line::styled("  No warranty. Use at your own risk.", warn));
@@ -104,7 +95,7 @@ pub fn render_disclaimer(frame: &mut Frame, area: Rect, allow_send: bool) {
         dim,
     ));
 
-    let height = if allow_send { 24 } else { 20 };
+    let height = 24;
 
     let paragraph = Paragraph::new(lines)
         .block(block)
@@ -232,7 +223,7 @@ fn render_status(frame: &mut Frame, area: Rect, app: &App) {
                 Span::styled("m ", Style::default().fg(Color::Yellow)),
                 Span::raw("monitor  "),
             ]);
-            if app.allow_send {
+            if !app.dry_run {
                 spans.extend([
                     Span::styled("t ", Style::default().fg(Color::Yellow)),
                     Span::raw("transfer  "),

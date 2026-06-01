@@ -126,7 +126,7 @@ fn record_interactive(conn: &DeviceConnection) -> Result<(), Box<dyn std::error:
         }
 
         let secs = base_secs + started.map_or(0, |s| s.elapsed().as_secs());
-        render(status, secs);
+        render(status, secs, conn.is_dry_run());
 
         let Some(key) = poll_key(Duration::from_millis(100))? else {
             continue;
@@ -172,9 +172,10 @@ fn record_interactive(conn: &DeviceConnection) -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
-fn render(status: RecordingStatus, secs: u64) {
+fn render(status: RecordingStatus, secs: u64, dry_run: bool) {
     print!(
-        "\r{:<5} {}   {:<38}",
+        "\r{}{:<5} {}   {:<38}",
+        if dry_run { "[dry-run] " } else { "" },
         status.label(),
         fmt_hms(secs),
         key_hint(status),

@@ -6,20 +6,16 @@ use rcp2_protocol::transport::hid::HidTransport;
 pub fn send(ctx: &Context, hex: &str) -> Result<(), Box<dyn std::error::Error>> {
     let bytes = parse_hex(hex)?;
 
-    if ctx.offline {
-        println!("offline mode: would send {} bytes", bytes.len());
-        println!("  {bytes:02x?}");
-        return Ok(());
-    }
-
-    if ctx.dry_run {
-        println!("dry-run: would send {} bytes", bytes.len());
-        println!("  {bytes:02x?}");
-        return Ok(());
-    }
-
     let hid_api = hidapi::HidApi::new()?;
     let (mut transport, _model) = HidTransport::open(&hid_api)?;
+
+    if ctx.dry_run {
+        info!(
+            "dry-run: would write {} raw bytes: {bytes:02x?}",
+            bytes.len()
+        );
+        return Ok(());
+    }
 
     info!("sending {} bytes", bytes.len());
     transport.send(&bytes)?;

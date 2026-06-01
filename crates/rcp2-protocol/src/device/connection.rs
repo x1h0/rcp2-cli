@@ -45,6 +45,7 @@ pub struct DeviceConnection {
     shutdown: Arc<AtomicBool>,
     rx_thread: Option<thread::JoinHandle<()>>,
     tx_thread: Option<thread::JoinHandle<()>>,
+    dry_run: bool,
 }
 
 impl DeviceConnection {
@@ -56,6 +57,7 @@ impl DeviceConnection {
         mut rx_transport: Box<dyn Transport>,
         mut tx_transport: Box<dyn Transport>,
         model: DeviceModel,
+        dry_run: bool,
     ) -> crate::Result<Self> {
         info!("sending handshake");
         tx_transport.send(HANDSHAKE_BYTES)?;
@@ -80,7 +82,7 @@ impl DeviceConnection {
         let tx_handle = thread::Builder::new()
             .name("HidSyncTxThread".into())
             .spawn(move || {
-                Self::tx_loop(&mut *tx_transport, &tx_cmd_rx, &shutdown_tx);
+                Self::tx_loop(&mut *tx_transport, &tx_cmd_rx, &shutdown_tx, dry_run);
                 debug!("TX thread stopped");
             })
             .map_err(|e| crate::Error::Transport(format!("failed to spawn TX thread: {e}")))?;
@@ -93,12 +95,18 @@ impl DeviceConnection {
             shutdown,
             rx_thread: Some(rx_handle),
             tx_thread: Some(tx_handle),
+            dry_run,
         })
     }
 
     #[must_use]
     pub fn model(&self) -> DeviceModel {
         self.model
+    }
+
+    #[must_use]
+    pub fn is_dry_run(&self) -> bool {
+        self.dry_run
     }
 
     #[must_use]
@@ -282,6 +290,7 @@ impl DeviceConnection {
         transport: &mut dyn Transport,
         commands: &mpsc::Receiver<TxCommand>,
         shutdown: &AtomicBool,
+        dry_run: bool,
     ) {
         while let Ok(cmd) = commands.recv() {
             if shutdown.load(Ordering::SeqCst) {
@@ -302,7 +311,15 @@ impl DeviceConnection {
                         name,
                         value,
                     };
-                    if let Err(e) =
+                    if dry_run {
+                        log_dry_run_packet(
+                            &packet,
+                            &format!(
+                                "property update {:?} {} = {:?}",
+                                packet.indices, packet.name, packet.value
+                            ),
+                        );
+                    } else if let Err(e) =
                         framing::write_framed_message(&packet, FRAME_PAYLOAD_SIZE, |frame| {
                             transport.send(frame)
                         })
@@ -318,7 +335,9 @@ impl DeviceConnection {
                     let _ = ack.send(());
                 }
                 TxCommand::SendRawPacket(packet) => {
-                    if let Err(e) =
+                    if dry_run {
+                        log_dry_run_packet(&*packet, "raw packet");
+                    } else if let Err(e) =
                         framing::write_framed_message(&*packet, FRAME_PAYLOAD_SIZE, |frame| {
                             transport.send(frame)
                         })
@@ -328,6 +347,21 @@ impl DeviceConnection {
                 }
             }
         }
+    }
+}
+
+fn log_dry_run_packet(packet: &dyn PacketSerialize, summary: &str) {
+    let mut bytes: Vec<u8> = Vec::new();
+    match framing::write_framed_message(packet, FRAME_PAYLOAD_SIZE, |frame| {
+        bytes.extend_from_slice(frame);
+        Ok(())
+    }) {
+        Ok(()) => info!(
+            "dry-run: would write {summary} ({} bytes: {:02x?})",
+            bytes.len(),
+            bytes
+        ),
+        Err(e) => info!("dry-run: would write {summary} (serialize failed: {e})"),
     }
 }
 

@@ -153,21 +153,16 @@ pub(super) fn render_pad_detail(frame: &mut Frame, area: Rect, app: &App) {
                 Style::default().fg(Color::White),
             )));
         }
-        if app.allow_send {
-            l.push(Line::raw(""));
-            l.push(hotkey_line("p", "play/stop"));
-            l.push(hotkey_line("\u{23CE}", "edit pad"));
-        }
+        l.push(Line::raw(""));
+        l.push(hotkey_line("p", "play/stop"));
+        l.push(hotkey_line("\u{23CE}", "edit pad"));
         l
     } else {
-        let mut l = vec![
+        vec![
             Line::styled("(empty)", Style::default().fg(Color::DarkGray)),
             Line::raw(""),
-        ];
-        if app.allow_send {
-            l.push(hotkey_line("\u{23CE}", "new pad"));
-        }
-        l
+            hotkey_line("\u{23CE}", "new pad"),
+        ]
     };
 
     let block = Block::default()

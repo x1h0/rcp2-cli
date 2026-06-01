@@ -16,7 +16,7 @@ use std::time::Duration;
 ///
 /// # Errors
 /// Returns an error if terminal setup, device connection, or event handling fails.
-pub fn run(allow_send: bool, accepted: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(dry_run: bool, accepted: bool) -> Result<(), Box<dyn std::error::Error>> {
     terminal::enable_raw_mode()?;
     let mut stdout = io::stdout();
     stdout.execute(EnterAlternateScreen)?;
@@ -31,7 +31,7 @@ pub fn run(allow_send: bool, accepted: bool) -> Result<(), Box<dyn std::error::E
     }));
 
     if !accepted {
-        let result = disclaimer_loop(&mut terminal, allow_send);
+        let result = disclaimer_loop(&mut terminal);
         match result {
             Ok(false) => {
                 terminal::disable_raw_mode()?;
@@ -53,7 +53,7 @@ pub fn run(allow_send: bool, accepted: bool) -> Result<(), Box<dyn std::error::E
         ui::render_connecting(frame, frame.area());
     })?;
 
-    let mut app = App::connect(allow_send)?;
+    let mut app = App::connect(dry_run)?;
     let result = run_loop(&mut terminal, &mut app);
 
     if app.main_view == MainView::Transfer {
@@ -70,11 +70,10 @@ pub fn run(allow_send: bool, accepted: bool) -> Result<(), Box<dyn std::error::E
 
 fn disclaimer_loop(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-    allow_send: bool,
 ) -> Result<bool, Box<dyn std::error::Error>> {
     loop {
         terminal.draw(|frame| {
-            ui::render_disclaimer(frame, frame.area(), allow_send);
+            ui::render_disclaimer(frame, frame.area());
         })?;
 
         if event::poll(Duration::from_millis(50))?
@@ -306,12 +305,12 @@ fn handle_global_key(app: &mut App, code: KeyCode) -> bool {
         KeyCode::Char(c @ '1'..='8') if app.main_view == MainView::Pads => {
             app.select_pad((c as usize) - ('1' as usize));
         }
-        KeyCode::Char('r') if app.allow_send => app.toggle_recording(),
-        KeyCode::Char('R') if app.allow_send => app.stop_recording(),
-        KeyCode::Char('p') if app.main_view == MainView::Pads && app.allow_send => {
+        KeyCode::Char('r') => app.toggle_recording(),
+        KeyCode::Char('R') => app.stop_recording(),
+        KeyCode::Char('p') if app.main_view == MainView::Pads => {
             app.tap_pad();
         }
-        KeyCode::Enter if app.main_view == MainView::Pads && app.allow_send => {
+        KeyCode::Enter if app.main_view == MainView::Pads => {
             app.open_detail_form();
         }
         KeyCode::Enter if app.main_view == MainView::Transfer => {

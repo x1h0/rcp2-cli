@@ -19,6 +19,11 @@ pub enum TransferAction {
 /// Returns an error if the tools are missing, the connection fails, or
 /// activation fails.
 pub fn transfer(ctx: &Context, action: &TransferAction) -> Result<(), Box<dyn std::error::Error>> {
+    if ctx.dry_run {
+        eprintln!("transfer is disabled in dry-run mode");
+        return Ok(());
+    }
+
     let TransferAction::Interactive { storage } = action;
     let mode = match storage.as_str() {
         "sd" => TRANSFER_MODE_SD,

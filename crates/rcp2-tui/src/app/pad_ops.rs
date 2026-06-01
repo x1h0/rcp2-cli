@@ -7,20 +7,12 @@ use rcp2_protocol::types::Value;
 
 impl App {
     pub fn tap_pad(&mut self) {
-        if !self.allow_send {
-            self.status = "send disabled (start with --allow-send)".into();
-            return;
-        }
         if let Err(e) = pad_ops::tap_pad(&self.conn, self.logical_pad_position(), self.profile) {
             self.status = format!("trigger failed: {e}");
         }
     }
 
     pub(super) fn send_pad_property(&mut self, name: &str, value: Value) {
-        if !self.allow_send {
-            self.status = "send disabled (start with --allow-send)".into();
-            return;
-        }
         let Some(sp_idx) = self.vm.soundpads_idx else {
             return;
         };
@@ -58,16 +50,16 @@ impl App {
 
     pub fn open_detail_form(&mut self) {
         let Some(pad) = self.selected_pad_info() else {
-            if self.allow_send {
-                let pad_idx =
-                    self.vm.selected_bank * self.profile.pads_per_bank + self.logical_pad_position();
-                self.detail_form = Some(DetailForm::new_pad(pad_idx));
-            } else {
-                self.status = "empty pad (--allow-send to configure)".into();
+            if self.dry_run {
+                self.status = "pad creation disabled in dry-run".into();
+                return;
             }
+            let pad_idx =
+                self.vm.selected_bank * self.profile.pads_per_bank + self.logical_pad_position();
+            self.detail_form = Some(DetailForm::new_pad(pad_idx));
             return;
         };
-        self.detail_form = Some(DetailForm::from_pad(pad, self.allow_send));
+        self.detail_form = Some(DetailForm::from_pad(pad, self.dry_run));
     }
 
     pub fn detail_form_enter(&mut self) {
@@ -119,6 +111,9 @@ impl App {
                 if let Some(prop) = field.property {
                     match prop.as_str() {
                         "download" => self.start_pad_download(),
+                        "upload" if self.dry_run => {
+                            self.status = "upload disabled in dry-run".into();
+                        }
                         "upload" => self.open_file_picker(),
                         "play" => self.tap_pad(),
                         "create" => self.confirm_create_pad(),
@@ -195,10 +190,10 @@ impl App {
         }
         let pad = self.selected_pad_info().cloned();
         let Some(pad) = pad else { return };
-        let allow_send = self.allow_send;
+        let dry_run = self.dry_run;
         if let Some(ref mut form) = self.detail_form {
             let selected = form.selected;
-            *form = DetailForm::from_pad(&pad, allow_send);
+            *form = DetailForm::from_pad(&pad, dry_run);
             form.selected = selected.min(form.fields.len().saturating_sub(1));
         }
     }
@@ -295,6 +290,10 @@ impl App {
     }
 
     fn confirm_replace_sound(&mut self) {
+        if self.dry_run {
+            self.status = "replace disabled in dry-run".into();
+            return;
+        }
         if !self.require_no_active_download() {
             return;
         }
@@ -384,6 +383,10 @@ impl App {
     }
 
     fn confirm_create_pad(&mut self) {
+        if self.dry_run {
+            self.status = "pad creation disabled in dry-run".into();
+            return;
+        }
         if !self.require_transfer_tools() {
             return;
         }

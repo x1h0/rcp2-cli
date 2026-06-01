@@ -3,11 +3,6 @@ use log::info;
 use rcp2_protocol::transport::hid::{HidTransport, PortType};
 
 pub fn connect(ctx: &Context) -> Result<(), Box<dyn std::error::Error>> {
-    if ctx.offline {
-        println!("offline mode: would connect to R\u{00D8}DECaster device");
-        return Ok(());
-    }
-
     let hid_api = hidapi::HidApi::new()?;
     let devices = HidTransport::enumerate(&hid_api);
 
@@ -29,11 +24,6 @@ pub fn connect(ctx: &Context) -> Result<(), Box<dyn std::error::Error>> {
             println!("device is connected via the secondary USB-C port.");
             println!("for configuration access, please connect via the main USB-C port.");
         }
-        return Ok(());
-    }
-
-    if ctx.dry_run {
-        println!("dry-run: would open connection and perform handshake");
         return Ok(());
     }
 

@@ -1,4 +1,4 @@
-use super::Context;
+use super::{Context, dry_run_suffix};
 use rcp2_core::ops::fader;
 use rcp2_core::{DeviceViewModel, FaderInfo};
 
@@ -83,14 +83,14 @@ pub fn fader(ctx: &Context, action: &FaderAction) -> Result<(), Box<dyn std::err
             let target = state.resolve(current);
             fader::set_mute(&conn, channel_index, target)?;
             conn.flush()?;
-            println!("fader {index} mute = {target}");
+            println!("fader {index} mute = {target}{}", dry_run_suffix(ctx));
         }
         FaderAction::Listen { index, state } => {
             let (channel_index, current) = resolve_fader(&vm, &channels, *index, |f| f.cue)?;
             let target = state.resolve(current);
             fader::set_listen(&conn, channel_index, target)?;
             conn.flush()?;
-            println!("fader {index} listen = {target}");
+            println!("fader {index} listen = {target}{}", dry_run_suffix(ctx));
         }
     }
 
