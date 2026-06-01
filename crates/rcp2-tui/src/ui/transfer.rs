@@ -7,7 +7,7 @@ use super::util::render_scrollbar;
 
 pub(super) fn render_transfer(frame: &mut Frame, area: Rect, app: &App) {
     if app.transfer.storage_choice.is_none() {
-        render_storage_choice(frame, area);
+        render_storage_choice(frame, area, app.vm.has_storage());
         return;
     }
 
@@ -44,7 +44,27 @@ pub(super) fn render_transfer(frame: &mut Frame, area: Rect, app: &App) {
     }
 }
 
-fn render_storage_choice(frame: &mut Frame, area: Rect) {
+fn render_storage_choice(frame: &mut Frame, area: Rect, sd_available: bool) {
+    let sd_line = if sd_available {
+        Line::from(vec![
+            Span::styled("    2 ", Style::default().fg(Color::Yellow)),
+            Span::styled("SD Card", Style::default().fg(Color::White)),
+            Span::styled(
+                "  (recordings, scene exports)",
+                Style::default().fg(Color::DarkGray),
+            ),
+        ])
+    } else {
+        Line::from(vec![
+            Span::styled("    2 ", Style::default().fg(Color::DarkGray)),
+            Span::styled("SD Card", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                "  (no card inserted)",
+                Style::default().fg(Color::DarkGray),
+            ),
+        ])
+    };
+
     let text = Paragraph::new(vec![
         Line::raw(""),
         Line::raw(""),
@@ -55,20 +75,13 @@ fn render_storage_choice(frame: &mut Frame, area: Rect) {
         Line::raw(""),
         Line::from(vec![
             Span::styled("    1 ", Style::default().fg(Color::Yellow)),
-            Span::styled("Internal (eMMC)", Style::default().fg(Color::White)),
+            Span::styled("Internal eMMC", Style::default().fg(Color::White)),
             Span::styled(
-                "  \u{2014} pads, system data",
+                "  (pads, system data)",
                 Style::default().fg(Color::DarkGray),
             ),
         ]),
-        Line::from(vec![
-            Span::styled("    2 ", Style::default().fg(Color::Yellow)),
-            Span::styled("SD Card", Style::default().fg(Color::White)),
-            Span::styled(
-                "  \u{2014} recordings, scene exports",
-                Style::default().fg(Color::DarkGray),
-            ),
-        ]),
+        sd_line,
         Line::raw(""),
         Line::styled(
             "  \u{26A0} Transfer mode will be activated.",
@@ -83,7 +96,7 @@ fn render_storage_choice(frame: &mut Frame, area: Rect) {
     ])
     .block(
         Block::default()
-            .title(" Transfer \u{2014} Choose Storage ")
+            .title(" Transfer: Choose Storage ")
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Yellow)),
     );

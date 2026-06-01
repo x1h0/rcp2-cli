@@ -83,8 +83,8 @@ impl RecordingStatus {
 #[derive(Debug, Clone, Default)]
 pub struct StorageInfo {
     pub name: String,
-    pub inserted: bool,
-    pub mounted: bool,
+    pub present: bool,
+    pub removable: bool,
     pub rec_destination: bool,
     pub capacity_bytes: u64,
     pub free_bytes: u64,
@@ -93,7 +93,7 @@ pub struct StorageInfo {
 impl StorageInfo {
     #[must_use]
     pub fn is_available(&self) -> bool {
-        self.inserted || self.capacity_bytes > 0
+        self.present
     }
 }
 
@@ -178,8 +178,19 @@ impl DeviceViewModel {
         self.profile.max_banks
     }
 
+    #[must_use]
     pub fn has_storage(&self) -> bool {
-        self.storage.iter().any(StorageInfo::is_available)
+        self.sd_storage().is_some()
+    }
+
+    #[must_use]
+    pub fn sd_storage(&self) -> Option<&StorageInfo> {
+        self.storage.iter().find(|s| s.removable && s.present)
+    }
+
+    #[must_use]
+    pub fn internal_storage(&self) -> Option<&StorageInfo> {
+        self.storage.iter().find(|s| !s.removable && s.present)
     }
 
     pub fn refresh(&mut self, state: &Structured) {
@@ -266,11 +277,11 @@ fn extract_storage(state: &Structured) -> Vec<StorageInfo> {
                 .filter(|c| c.name == "STORAGEVOLUME")
                 .map(|c| {
                     let state_str = get_string(c, "storageVolumeState");
-                    let (capacity, free) = parse_storage_state(&state_str);
+                    let (capacity, free, removable) = parse_storage_state(&state_str);
                     StorageInfo {
                         name: get_string(c, "storageVolumeName"),
-                        inserted: get_bool(c, "storageVolumeInserted"),
-                        mounted: get_bool(c, "storageVolumeMounted"),
+                        present: capacity > 0,
+                        removable,
                         rec_destination: get_bool(c, "storageVolumeRecDestination"),
                         capacity_bytes: capacity,
                         free_bytes: free,
@@ -281,15 +292,12 @@ fn extract_storage(state: &Structured) -> Vec<StorageInfo> {
         .unwrap_or_default()
 }
 
-fn parse_storage_state(state: &str) -> (u64, u64) {
+fn parse_storage_state(state: &str) -> (u64, u64, bool) {
     let parts: Vec<&str> = state.split('|').collect();
-    if parts.len() >= 2 {
-        let capacity = parts[0].parse().unwrap_or(0);
-        let free = parts[1].parse().unwrap_or(0);
-        (capacity, free)
-    } else {
-        (0, 0)
-    }
+    let capacity = parts.first().and_then(|s| s.parse().ok()).unwrap_or(0);
+    let free = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(0);
+    let removable = parts.get(2).is_some_and(|s| *s == "1");
+    (capacity, free, removable)
 }
 
 fn extract_show(state: &Structured) -> ShowInfo {
@@ -362,5 +370,25 @@ pub(crate) fn get_string(node: &Structured, name: &str) -> String {
     match node.properties.get(name) {
         Some(Value::String(v)) => v.clone(),
         _ => String::new(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_storage_state;
+
+    #[test]
+    fn parses_storage_volume_state() {
+        // capacity|free|removable|... — real device strings: SD, eMMC, empty.
+        assert_eq!(
+            parse_storage_state("64084770816|63855788032|1|1|1"),
+            (64_084_770_816, 63_855_788_032, true)
+        );
+        assert_eq!(
+            parse_storage_state("5277638656|5191655424|0|1|1"),
+            (5_277_638_656, 5_191_655_424, false)
+        );
+        assert_eq!(parse_storage_state("0|0|0|0|0"), (0, 0, false));
+        assert_eq!(parse_storage_state(""), (0, 0, false));
     }
 }

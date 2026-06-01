@@ -1,5 +1,6 @@
 use super::App;
 use crate::transfer::{PadDownload, PadDownloadState, PadDownloadStatus, PadUploadState};
+use rcp2_core::ops::TRANSFER_MODE_SD;
 use rcp2_core::ops::pad as pad_ops;
 
 impl App {
@@ -20,6 +21,10 @@ impl App {
     }
 
     pub fn choose_transfer_storage(&mut self, mode: u32) {
+        if mode == TRANSFER_MODE_SD && !self.vm.has_storage() {
+            self.status = "no SD card detected".into();
+            return;
+        }
         self.transfer.storage_choice = Some(mode);
         self.activate_transfer_mode(mode);
     }

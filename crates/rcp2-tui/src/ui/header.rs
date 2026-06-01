@@ -4,6 +4,36 @@ use ratatui::widgets::{Block, Borders, Paragraph};
 use rcp2_core::RecordingStatus;
 
 use super::util::format_seconds;
+use rcp2_core::StorageInfo;
+
+fn internal_label(info: Option<&StorageInfo>) -> String {
+    match info {
+        Some(s) if s.capacity_bytes > 0 => {
+            let used = s.capacity_bytes.saturating_sub(s.free_bytes);
+            format!(
+                "Int {}/{}",
+                rcp2_core::ops::format_size(used),
+                rcp2_core::ops::format_size(s.capacity_bytes),
+            )
+        }
+        _ => "Int".into(),
+    }
+}
+
+fn storage_label(name: &str, info: Option<&StorageInfo>) -> String {
+    match info {
+        Some(s) if s.capacity_bytes > 0 => {
+            let used = s.capacity_bytes.saturating_sub(s.free_bytes);
+            format!(
+                "{name} \u{2713} {}/{}",
+                rcp2_core::ops::format_size(used),
+                rcp2_core::ops::format_size(s.capacity_bytes),
+            )
+        }
+        Some(_) => format!("{name} \u{2713}"),
+        None => format!("{name} \u{2717}"),
+    }
+}
 
 pub(super) fn render_header(frame: &mut Frame, area: Rect, app: &App) {
     let vm = &app.vm;
@@ -16,8 +46,6 @@ pub(super) fn render_header(frame: &mut Frame, area: Rect, app: &App) {
     };
 
     let rec_time = format_seconds(app.recording_seconds());
-
-    let has_storage = vm.has_storage();
 
     let title_style = if app.connected {
         Style::default().fg(Color::Red).bold()
@@ -43,23 +71,13 @@ pub(super) fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         ),
         Span::styled(" \u{2502} ", sep),
         Span::styled(
-            if has_storage {
-                let sd = vm.storage.iter().find(|s| s.is_available());
-                match sd {
-                    Some(s) if s.capacity_bytes > 0 => {
-                        let used = s.capacity_bytes.saturating_sub(s.free_bytes);
-                        format!(
-                            "SD \u{2713} {}/{}",
-                            rcp2_core::ops::format_size(used),
-                            rcp2_core::ops::format_size(s.capacity_bytes),
-                        )
-                    }
-                    _ => "SD \u{2713}".into(),
-                }
-            } else {
-                "SD \u{2717}".into()
-            },
-            Style::default().fg(if has_storage {
+            internal_label(vm.internal_storage()),
+            Style::default().fg(Color::DarkGray),
+        ),
+        Span::styled(" \u{2502} ", sep),
+        Span::styled(
+            storage_label("SD", vm.sd_storage()),
+            Style::default().fg(if vm.sd_storage().is_some() {
                 Color::Green
             } else {
                 Color::DarkGray

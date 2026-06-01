@@ -7,11 +7,18 @@ use rcp2_protocol::device::{DeviceConnection, DeviceEvent};
 use std::io::Write;
 use std::time::{Duration, Instant};
 
+#[derive(Clone, Copy, clap::ValueEnum)]
+pub enum StorageArg {
+    Emmc,
+    Sd,
+}
+
 #[derive(clap::Subcommand)]
 pub enum TransferAction {
     Interactive {
-        #[arg(long, default_value = "emmc")]
-        storage: String,
+        /// Storage to mount; prompts interactively if omitted
+        #[arg(long, value_enum)]
+        storage: Option<StorageArg>,
     },
 }
 
@@ -25,11 +32,6 @@ pub fn transfer(ctx: &Context, action: &TransferAction) -> Result<(), Box<dyn st
     }
 
     let TransferAction::Interactive { storage } = action;
-    let mode = match storage.as_str() {
-        "sd" => TRANSFER_MODE_SD,
-        "emmc" => TRANSFER_MODE_EMMC,
-        other => return Err(format!("unknown storage '{other}' (use emmc or sd)").into()),
-    };
 
     if !transfer::tools_available() {
         return Err("transfer requires lsblk and udisksctl".into());
@@ -37,14 +39,51 @@ pub fn transfer(ctx: &Context, action: &TransferAction) -> Result<(), Box<dyn st
 
     let conn = super::open_connection(ctx)?;
     conn.wait_for_state()?;
+    let state = conn.state().snapshot()?;
+    let vm = rcp2_core::DeviceViewModel::from_state(&state, conn.model().profile());
+
+    let mode = match storage {
+        Some(StorageArg::Sd) => TRANSFER_MODE_SD,
+        Some(StorageArg::Emmc) => TRANSFER_MODE_EMMC,
+        None => prompt_storage(&vm)?,
+    };
+
+    if mode == TRANSFER_MODE_SD && !vm.has_storage() {
+        return Err("no SD card detected, insert a card and try again".into());
+    }
+
+    let label = if mode == TRANSFER_MODE_SD { "sd" } else { "emmc" };
     pad::activate_transfer_mode(&conn, mode)?;
-    println!("activating transfer mode ({storage})...");
+    println!("activating transfer mode ({label})...");
 
     let mut guard = TransferGuard {
         conn: &conn,
         ts: TransferState::new(),
     };
     transfer_session(&conn, &mut guard.ts)
+}
+
+fn prompt_storage(
+    vm: &rcp2_core::DeviceViewModel,
+) -> Result<u32, Box<dyn std::error::Error>> {
+    let sd = if vm.has_storage() {
+        "SD Card (recordings, scene exports)"
+    } else {
+        "SD Card (no card inserted)"
+    };
+    println!("Select storage:");
+    println!("  1  Internal eMMC (pads, system data)");
+    println!("  2  {sd}");
+    print!("> ");
+    std::io::stdout().flush()?;
+
+    let mut line = String::new();
+    std::io::stdin().read_line(&mut line)?;
+    match line.trim() {
+        "1" | "emmc" => Ok(TRANSFER_MODE_EMMC),
+        "2" | "sd" => Ok(TRANSFER_MODE_SD),
+        other => Err(format!("invalid choice '{other}' (enter 1 or 2)").into()),
+    }
 }
 
 struct TransferGuard<'a> {
