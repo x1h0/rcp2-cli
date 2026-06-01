@@ -30,7 +30,7 @@ pub fn set_property(
     println!("setting [{indices_str}] {name} = {value:?}");
     conn.send_property_update(indices, name.into(), value)?;
 
-    std::thread::sleep(std::time::Duration::from_millis(200));
+    conn.flush()?;
     println!("done");
 
     Ok(())

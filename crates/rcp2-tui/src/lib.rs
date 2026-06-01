@@ -59,6 +59,7 @@ pub fn run(allow_send: bool, accepted: bool) -> Result<(), Box<dyn std::error::E
     if app.main_view == MainView::Transfer {
         app.leave_transfer_view();
     }
+    let _ = app.conn.flush();
 
     terminal::disable_raw_mode()?;
     terminal.backend_mut().execute(LeaveAlternateScreen)?;

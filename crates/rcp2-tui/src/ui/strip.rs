@@ -151,21 +151,21 @@ fn render_virtual_section(frame: &mut Frame, area: Rect, faders: &[rcp2_core::Fa
     }
 }
 
-fn fader_color(muted: bool, soloed: bool) -> Color {
+fn fader_color(muted: bool, listen: bool) -> Color {
     if muted {
         Color::Red
-    } else if soloed {
+    } else if listen {
         Color::Yellow
     } else {
         Color::Green
     }
 }
 
-fn fader_suffix(muted: bool, soloed: bool) -> &'static str {
+fn fader_suffix(muted: bool, listen: bool) -> &'static str {
     if muted {
         " M"
-    } else if soloed {
-        " S"
+    } else if listen {
+        " L"
     } else {
         ""
     }

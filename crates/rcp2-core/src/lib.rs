@@ -61,7 +61,8 @@ pub enum RecordingStatus {
 }
 
 impl RecordingStatus {
-    fn from_u32(v: u32) -> Self {
+    #[must_use]
+    pub fn from_u32(v: u32) -> Self {
         match v {
             1 => RecordingStatus::Paused,
             2 => RecordingStatus::Recording,

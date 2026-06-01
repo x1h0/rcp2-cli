@@ -1,5 +1,6 @@
 pub mod audio;
 pub mod download;
+pub mod fader;
 pub mod pad;
 pub mod transfer;
 pub mod upload;

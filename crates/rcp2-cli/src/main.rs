@@ -38,6 +38,21 @@ enum Commands {
     Dump,
     /// Monitor property updates in real-time
     Monitor,
+    /// Control recording (status/interactive)
+    Record {
+        #[command(subcommand)]
+        action: commands::RecordAction,
+    },
+    /// File transfer mode (emmc/sd)
+    Transfer {
+        #[command(subcommand)]
+        action: commands::TransferAction,
+    },
+    /// Fader mute / listen control
+    Fader {
+        #[command(subcommand)]
+        action: commands::FaderAction,
+    },
     /// Send raw hex bytes to device (dev builds only)
     #[cfg(debug_assertions)]
     Send {
@@ -97,6 +112,15 @@ fn main() {
         Commands::Connect => commands::run_with_disclaimer(&ctx, || commands::connect(&ctx)),
         Commands::Dump => commands::run_with_disclaimer(&ctx, || commands::dump(&ctx)),
         Commands::Monitor => commands::run_with_disclaimer(&ctx, || commands::monitor(&ctx)),
+        Commands::Record { ref action } => {
+            commands::run_with_disclaimer(&ctx, || commands::record(&ctx, action))
+        }
+        Commands::Transfer { ref action } => {
+            commands::run_with_disclaimer(&ctx, || commands::transfer(&ctx, action))
+        }
+        Commands::Fader { ref action } => {
+            commands::run_with_disclaimer(&ctx, || commands::fader(&ctx, action))
+        }
         #[cfg(debug_assertions)]
         Commands::Send { ref hex } => {
             commands::run_with_disclaimer(&ctx, || commands::send(&ctx, hex))

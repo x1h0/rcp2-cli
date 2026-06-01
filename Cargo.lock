@@ -1347,9 +1347,11 @@ name = "rcp2-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "crossterm",
  "env_logger",
  "hidapi",
  "log",
+ "rcp2-core",
  "rcp2-protocol",
  "rcp2-tui",
  "serde_json",

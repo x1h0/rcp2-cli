@@ -33,6 +33,7 @@ enum TxCommand {
     },
     SendRawPacket(Box<dyn PacketSerialize + Send>),
     ResendHandshake,
+    Flush(mpsc::Sender<()>),
     Disconnect,
 }
 
@@ -128,6 +129,20 @@ impl DeviceConnection {
         self.tx_cmd
             .send(TxCommand::SendRawPacket(packet))
             .map_err(|e| crate::Error::Transport(format!("TX channel closed: {e}")))
+    }
+
+    /// Blocks until all previously queued TX commands have been written.
+    ///
+    /// # Errors
+    /// Returns an error if the TX channel is closed before the flush completes.
+    pub fn flush(&self) -> crate::Result<()> {
+        let (ack_tx, ack_rx) = mpsc::channel();
+        self.tx_cmd
+            .send(TxCommand::Flush(ack_tx))
+            .map_err(|e| crate::Error::Transport(format!("TX channel closed: {e}")))?;
+        ack_rx
+            .recv()
+            .map_err(|e| crate::Error::Transport(format!("flush ack failed: {e}")))
     }
 
     /// Sends a property update to the device.
@@ -298,6 +313,9 @@ impl DeviceConnection {
                 TxCommand::ResendHandshake => {
                     debug!("re-sending handshake for full state refresh");
                     let _ = transport.send(HANDSHAKE_BYTES);
+                }
+                TxCommand::Flush(ack) => {
+                    let _ = ack.send(());
                 }
                 TxCommand::SendRawPacket(packet) => {
                     if let Err(e) =

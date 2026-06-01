@@ -45,6 +45,7 @@ pub fn clean_pads(ctx: &Context) -> Result<(), Box<dyn std::error::Error>> {
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
+    conn.flush()?;
     println!("done. {} broken pad(s) removed.", broken.len());
     Ok(())
 }

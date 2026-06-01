@@ -12,6 +12,17 @@ pub enum TransferStatus {
     Error,
 }
 
+#[must_use]
+pub fn tools_available() -> bool {
+    let check = |name: &str| {
+        Command::new("sh")
+            .args(["-c", &format!("command -v {name}")])
+            .output()
+            .is_ok_and(|o| o.status.success())
+    };
+    check("lsblk") && check("udisksctl")
+}
+
 #[derive(Debug, Clone)]
 pub struct FileEntry {
     pub path: PathBuf,

@@ -10,9 +10,11 @@ path = "src/main.rs"
 
 [dependencies]
 rcp2-protocol = { path = "../rcp2-protocol", version = "0.1.0" }
+rcp2-core = { path = "../rcp2-core", version = "0.1.0" }
 rcp2-tui = { path = "../rcp2-tui", version = "0.1.0" }
 hidapi = { workspace = true }
 clap = { workspace = true }
+crossterm = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }
 serde_json = { workspace = true }

@@ -2,14 +2,20 @@
 mod clean_pads_cmd;
 mod connect_cmd;
 mod dump_cmd;
+mod fader_cmd;
+mod interactive;
 mod monitor_cmd;
+mod record_cmd;
 #[cfg(debug_assertions)]
 mod send_cmd;
 #[cfg(debug_assertions)]
 mod set_property_cmd;
+mod transfer_cmd;
 
+use rcp2_core::DeviceViewModel;
 use rcp2_protocol::device::DeviceConnection;
 use rcp2_protocol::transport::hid::HidTransport;
+use rcp2_protocol::types::Structured;
 use std::io::Write;
 
 pub struct Context {
@@ -23,11 +29,14 @@ pub struct Context {
 pub use clean_pads_cmd::clean_pads;
 pub use connect_cmd::connect;
 pub use dump_cmd::dump;
+pub use fader_cmd::{FaderAction, fader};
 pub use monitor_cmd::monitor;
+pub use record_cmd::{RecordAction, record};
 #[cfg(debug_assertions)]
 pub use send_cmd::send;
 #[cfg(debug_assertions)]
 pub use set_property_cmd::set_property;
+pub use transfer_cmd::{TransferAction, transfer};
 
 pub fn run_with_disclaimer(
     ctx: &Context,
@@ -73,4 +82,14 @@ fn open_connection(ctx: &Context) -> Result<DeviceConnection, Box<dyn std::error
     let ((rx, tx), model) = HidTransport::open_pair(&hid_api)?;
     let conn = DeviceConnection::open(Box::new(rx), Box::new(tx), model)?;
     Ok(conn)
+}
+
+fn connect_and_snapshot(
+    ctx: &Context,
+) -> Result<(DeviceConnection, Structured, DeviceViewModel), Box<dyn std::error::Error>> {
+    let conn = open_connection(ctx)?;
+    conn.wait_for_state()?;
+    let state = conn.state().snapshot()?;
+    let vm = DeviceViewModel::from_state(&state, conn.model().profile());
+    Ok((conn, state, vm))
 }

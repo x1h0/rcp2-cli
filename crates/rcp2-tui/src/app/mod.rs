@@ -110,7 +110,7 @@ impl App {
             help_scroll: 0,
             help_max_scroll: 0,
             allow_send,
-            has_transfer_tools: Self::check_transfer_tools(),
+            has_transfer_tools: rcp2_core::ops::transfer::tools_available(),
             detail_form: None,
             modal: ModalState::None,
             transfer: TransferState::new(),
@@ -120,16 +120,6 @@ impl App {
             rec_started_at: None,
             rec_paused_elapsed: 0,
         })
-    }
-
-    fn check_transfer_tools() -> bool {
-        let check = |name| {
-            std::process::Command::new("sh")
-                .args(["-c", &format!("command -v {name}")])
-                .output()
-                .is_ok_and(|o| o.status.success())
-        };
-        check("lsblk") && check("udisksctl")
     }
 
     pub fn poll_device_events(&mut self) {
