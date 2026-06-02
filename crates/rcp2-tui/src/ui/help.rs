@@ -17,6 +17,7 @@ pub(super) fn render_help(frame: &mut Frame, area: Rect, app: &mut App) {
         ),
         hotkey_line("p", "play/stop"),
         hotkey_line("\u{23CE}", "edit pad"),
+        hotkey_line("PgUp/PgDn", "scroll detail"),
         Line::raw(""),
         Line::styled("  Edit View", Style::default().fg(Color::Cyan).bold()),
         hotkey_line("\u{2191}\u{2193}", "navigate fields"),
@@ -57,5 +58,11 @@ pub(super) fn render_help(frame: &mut Frame, area: Rect, app: &mut App) {
 
     let inner_height = area.height.saturating_sub(3) as usize;
     app.help_max_scroll = line_count.saturating_sub(inner_height) as u16;
-    render_scrollbar(frame, area, line_count, inner_height, app.help_scroll as usize);
+    render_scrollbar(
+        frame,
+        area,
+        line_count,
+        inner_height,
+        app.help_scroll as usize,
+    );
 }

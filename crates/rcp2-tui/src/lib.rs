@@ -341,6 +341,8 @@ fn handle_global_key(app: &mut App, code: KeyCode) -> bool {
         KeyCode::Char(c @ '1'..='8') if app.main_view == MainView::Pads => {
             app.select_pad((c as usize) - ('1' as usize));
         }
+        KeyCode::PageUp if app.main_view == MainView::Pads => app.detail_scroll_up(),
+        KeyCode::PageDown if app.main_view == MainView::Pads => app.detail_scroll_down(),
         KeyCode::Char('r') => app.toggle_recording(),
         KeyCode::Char('R') => app.stop_recording(),
         KeyCode::Char('p') if app.main_view == MainView::Pads => {

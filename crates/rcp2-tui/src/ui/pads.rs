@@ -103,7 +103,7 @@ pub(super) fn render_pad_list(frame: &mut Frame, area: Rect, app: &App) {
     frame.render_widget(list, area);
 }
 
-pub(super) fn render_pad_detail(frame: &mut Frame, area: Rect, app: &App) {
+pub(super) fn render_pad_detail(frame: &mut Frame, area: Rect, app: &mut App) {
     if let Some(ref form) = app.detail_form {
         super::form::render_detail_form(frame, area, app, form);
         return;
@@ -165,14 +165,34 @@ pub(super) fn render_pad_detail(frame: &mut Frame, area: Rect, app: &App) {
         ]
     };
 
-    let block = Block::default()
+    let inner_width = area.width.saturating_sub(4).max(1) as usize;
+    let inner_height = area.height.saturating_sub(3) as usize;
+    let total: usize = lines
+        .iter()
+        .map(|l| l.width().max(1).div_ceil(inner_width))
+        .sum();
+    let max_scroll = u16::try_from(total.saturating_sub(inner_height)).unwrap_or(u16::MAX);
+    app.detail_scroll = app.detail_scroll.min(max_scroll);
+    let scroll = app.detail_scroll;
+
+    let mut block = Block::default()
         .title(" Detail ")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::DarkGray))
         .padding(Padding::new(1, 1, 1, 0));
+    if total > inner_height {
+        let up = if scroll > 0 { "\u{25B2}" } else { " " };
+        let down = if scroll as usize + inner_height < total {
+            "\u{25BC}"
+        } else {
+            " "
+        };
+        block = block.title_bottom(Line::from(format!(" {up} {down} ")).right_aligned());
+    }
 
     let paragraph = Paragraph::new(lines)
         .block(block)
-        .wrap(Wrap { trim: false });
+        .wrap(Wrap { trim: false })
+        .scroll((scroll, 0));
     frame.render_widget(paragraph, area);
 }

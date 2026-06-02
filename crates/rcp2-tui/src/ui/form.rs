@@ -1,7 +1,7 @@
 use crate::app::App;
 use crate::detail_form::{DetailForm, FieldKind};
 use ratatui::prelude::*;
-use ratatui::widgets::{Block, Borders, Padding, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Padding, Paragraph};
 
 pub(super) fn render_detail_form(frame: &mut Frame, area: Rect, app: &App, form: &DetailForm) {
     let mut lines: Vec<Line> = vec![];
@@ -18,6 +18,7 @@ pub(super) fn render_detail_form(frame: &mut Frame, area: Rect, app: &App, form:
     render_form_header(&mut lines, app, form, is_new);
 
     let mut actions_started = false;
+    let mut selected_line = 0usize;
     for (i, field) in form.fields.iter().enumerate() {
         let selected = i == form.selected;
         render_field(
@@ -29,17 +30,37 @@ pub(super) fn render_detail_form(frame: &mut Frame, area: Rect, app: &App, form:
             is_new,
             &mut actions_started,
         );
+        if selected {
+            selected_line = lines.len().saturating_sub(1);
+        }
     }
 
-    let block = Block::default()
+    let inner_height = area.height.saturating_sub(3) as usize;
+    let total = lines.len();
+    let scroll = if inner_height > 0 && selected_line >= inner_height {
+        selected_line + 1 - inner_height
+    } else {
+        0
+    };
+
+    let mut block = Block::default()
         .title(title)
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan))
         .padding(Padding::new(1, 1, 1, 0));
+    if inner_height > 0 && total > inner_height {
+        let up = if scroll > 0 { "\u{25B2}" } else { " " };
+        let down = if scroll + inner_height < total {
+            "\u{25BC}"
+        } else {
+            " "
+        };
+        block = block.title_bottom(Line::from(format!(" {up} {down} ")).right_aligned());
+    }
 
     let paragraph = Paragraph::new(lines)
         .block(block)
-        .wrap(Wrap { trim: false });
+        .scroll((u16::try_from(scroll).unwrap_or(0), 0));
     frame.render_widget(paragraph, area);
 }
 

@@ -3,7 +3,7 @@ use ratatui::widgets::{Scrollbar, ScrollbarOrientation, ScrollbarState};
 
 pub(super) fn hotkey_line(key: &str, desc: &str) -> Line<'static> {
     Line::from(vec![
-        Span::styled(format!("  {key:<4}"), Style::default().fg(Color::Yellow)),
+        Span::styled(format!("  {key:<4} "), Style::default().fg(Color::Yellow)),
         Span::styled(desc.to_string(), Style::default().fg(Color::DarkGray)),
     ])
 }

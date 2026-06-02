@@ -52,6 +52,7 @@ pub struct App {
     pub profile: &'static DeviceProfile,
     pub vm: DeviceViewModel,
     pub selected_pad: usize,
+    pub detail_scroll: u16,
     pub status: String,
     pub connected: bool,
     pub main_view: MainView,
@@ -106,6 +107,7 @@ impl App {
             profile,
             vm,
             selected_pad: 0,
+            detail_scroll: 0,
             status: if dry_run {
                 "connected (dry-run)".into()
             } else {
@@ -357,6 +359,7 @@ impl App {
         if count > 0 {
             self.vm.selected_bank = (self.vm.selected_bank + 1) % count;
             self.selected_pad = 0;
+            self.detail_scroll = 0;
             self.sync_bank_to_device();
         }
     }
@@ -366,8 +369,17 @@ impl App {
         if count > 0 {
             self.vm.selected_bank = (self.vm.selected_bank + count - 1) % count;
             self.selected_pad = 0;
+            self.detail_scroll = 0;
             self.sync_bank_to_device();
         }
+    }
+
+    pub fn detail_scroll_up(&mut self) {
+        self.detail_scroll = self.detail_scroll.saturating_sub(1);
+    }
+
+    pub fn detail_scroll_down(&mut self) {
+        self.detail_scroll = self.detail_scroll.saturating_add(1);
     }
 
     pub fn toggle_recording(&mut self) {
@@ -401,16 +413,19 @@ impl App {
 
     pub fn next_pad(&mut self) {
         self.selected_pad = (self.selected_pad + 1) % self.profile.pads_per_bank;
+        self.detail_scroll = 0;
     }
 
     pub fn prev_pad(&mut self) {
         let ppb = self.profile.pads_per_bank;
         self.selected_pad = (self.selected_pad + ppb - 1) % ppb;
+        self.detail_scroll = 0;
     }
 
     pub fn select_pad(&mut self, idx: usize) {
         if idx < self.profile.pads_per_bank {
             self.selected_pad = idx;
+            self.detail_scroll = 0;
         }
     }
 }
