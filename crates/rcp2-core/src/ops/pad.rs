@@ -5,7 +5,7 @@ use rcp2_protocol::packet::child_added::ChildAddedPacket;
 use rcp2_protocol::types::Value;
 use std::time::Duration;
 
-const BUTTON_PRESS_DELAY: Duration = Duration::from_millis(50);
+pub const DEFAULT_PRESS: Duration = Duration::from_millis(50);
 const NODE_CREATION_DELAY: Duration = Duration::from_millis(300);
 const PROPERTY_UPDATE_DELAY: Duration = Duration::from_millis(30);
 
@@ -18,7 +18,7 @@ pub fn tap_pad(
     pad_position: usize,
     profile: &DeviceProfile,
 ) -> rcp2_protocol::Result<()> {
-    tap_pad_for(conn, pad_position, profile, BUTTON_PRESS_DELAY)
+    tap_pad_for(conn, pad_position, profile, DEFAULT_PRESS)
 }
 
 /// Simulates a tap on a SMART pad button, holding it for the given duration.
@@ -31,16 +31,43 @@ pub fn tap_pad_for(
     profile: &DeviceProfile,
     hold: Duration,
 ) -> rcp2_protocol::Result<()> {
+    press_pad(conn, pad_position, profile)?;
+    std::thread::sleep(hold);
+    release_pad(conn, pad_position, profile)
+}
+
+/// Presses (and holds) a SMART pad button. Pair with [`release_pad`].
+///
+/// # Errors
+/// Returns an error if sending the property update fails.
+pub fn press_pad(
+    conn: &DeviceConnection,
+    pad_position: usize,
+    profile: &DeviceProfile,
+) -> rcp2_protocol::Result<()> {
     let button_idx = profile.padbutton_offset + pad_position;
-    let indices = vec![PHYSICAL_INTERFACE_IDX, button_idx];
     conn.send_property_update(
-        indices.clone(),
+        vec![PHYSICAL_INTERFACE_IDX, button_idx],
         "padButtonPressed".into(),
         Value::Bool(true),
-    )?;
-    std::thread::sleep(hold);
-    conn.send_property_update(indices, "padButtonPressed".into(), Value::Bool(false))?;
-    Ok(())
+    )
+}
+
+/// Releases a previously pressed SMART pad button.
+///
+/// # Errors
+/// Returns an error if sending the property update fails.
+pub fn release_pad(
+    conn: &DeviceConnection,
+    pad_position: usize,
+    profile: &DeviceProfile,
+) -> rcp2_protocol::Result<()> {
+    let button_idx = profile.padbutton_offset + pad_position;
+    conn.send_property_update(
+        vec![PHYSICAL_INTERFACE_IDX, button_idx],
+        "padButtonPressed".into(),
+        Value::Bool(false),
+    )
 }
 
 /// Syncs the selected bank index to the device.

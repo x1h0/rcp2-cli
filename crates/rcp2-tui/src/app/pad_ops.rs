@@ -1,16 +1,46 @@
-use super::{App, ConfirmAction, ConfirmDialog};
+use super::{App, ConfirmAction, ConfirmDialog, PadHold};
 use crate::detail_form::{DetailForm, FieldKind};
 use crate::transfer::{PadUpload, PadUploadStatus};
 use log::info;
 use rcp2_core::ops::TRANSFER_MODE_EMMC;
 use rcp2_core::ops::pad as pad_ops;
 use rcp2_protocol::types::Value;
+use std::time::Instant;
 
 impl App {
     pub fn tap_pad(&mut self) {
         if let Err(e) = pad_ops::tap_pad(&self.conn, self.logical_pad_position(), self.profile) {
             self.status = format!("trigger failed: {e}");
         }
+    }
+
+    pub fn trigger_pad(&mut self) {
+        match self.pad_hold {
+            PadHold::Tap => self.tap_pad(),
+            PadHold::Held(..) => {}
+            PadHold::Idle => {
+                let position = self.logical_pad_position();
+                if let Err(e) = pad_ops::press_pad(&self.conn, position, self.profile) {
+                    self.status = format!("trigger failed: {e}");
+                    return;
+                }
+                self.pad_hold = PadHold::Held(position, Instant::now());
+            }
+        }
+    }
+
+    pub fn pad_release(&mut self) {
+        let PadHold::Held(position, start) = self.pad_hold else {
+            return;
+        };
+        let elapsed = start.elapsed();
+        if elapsed < pad_ops::DEFAULT_PRESS {
+            std::thread::sleep(pad_ops::DEFAULT_PRESS.saturating_sub(elapsed));
+        }
+        if let Err(e) = pad_ops::release_pad(&self.conn, position, self.profile) {
+            self.status = format!("trigger failed: {e}");
+        }
+        self.pad_hold = PadHold::Idle;
     }
 
     pub(super) fn send_pad_property(&mut self, name: &str, value: Value) {

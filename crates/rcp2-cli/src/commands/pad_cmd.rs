@@ -51,10 +51,8 @@ pub fn pad(ctx: &Context, action: &PadAction) -> Result<(), Box<dyn std::error::
         std::thread::sleep(BANK_SETTLE_DELAY);
     }
 
-    match hold {
-        Some(ms) => pad_ops::tap_pad_for(&conn, position, profile, Duration::from_millis(*ms))?,
-        None => pad_ops::tap_pad(&conn, position, profile)?,
-    }
+    let hold = (*hold).map_or(pad_ops::DEFAULT_PRESS, Duration::from_millis);
+    pad_ops::tap_pad_for(&conn, position, profile, hold)?;
 
     if switch && !no_restore {
         std::thread::sleep(BANK_SETTLE_DELAY);

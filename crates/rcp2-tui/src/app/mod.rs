@@ -71,6 +71,14 @@ pub struct App {
     pub(super) rec_started_at: Option<Instant>,
     pub(super) rec_paused_elapsed: u64,
     pub(super) log_start: Instant,
+    pub(super) pad_hold: PadHold,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum PadHold {
+    Tap,
+    Idle,
+    Held(usize, Instant),
 }
 
 impl App {
@@ -121,6 +129,7 @@ impl App {
             rec_started_at: None,
             rec_paused_elapsed: 0,
             log_start: Instant::now(),
+            pad_hold: PadHold::Tap,
         })
     }
 

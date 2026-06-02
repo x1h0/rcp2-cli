@@ -3,10 +3,15 @@ mod detail_form;
 mod transfer;
 mod ui;
 
-use app::{App, MainView};
+use app::{App, MainView, PadHold};
 use crossterm::ExecutableCommand;
-use crossterm::event::{self, Event, KeyCode, KeyEventKind};
-use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
+use crossterm::event::{
+    self, Event, KeyCode, KeyEventKind, KeyboardEnhancementFlags, PopKeyboardEnhancementFlags,
+    PushKeyboardEnhancementFlags,
+};
+use crossterm::terminal::{
+    self, EnterAlternateScreen, LeaveAlternateScreen, supports_keyboard_enhancement,
+};
 use ratatui::prelude::*;
 use rcp2_core::ops::{TRANSFER_MODE_EMMC, TRANSFER_MODE_SD};
 use std::io;
@@ -30,8 +35,20 @@ pub fn run(dry_run: bool, accepted: bool) -> Result<(), Box<dyn std::error::Erro
         original_hook(info);
     }));
 
-    let result = run_inner(&mut terminal, dry_run, accepted);
+    let hold_capable = supports_keyboard_enhancement().unwrap_or(false);
+    if hold_capable {
+        let _ = terminal
+            .backend_mut()
+            .execute(PushKeyboardEnhancementFlags(
+                KeyboardEnhancementFlags::REPORT_EVENT_TYPES,
+            ));
+    }
 
+    let result = run_inner(&mut terminal, dry_run, accepted, hold_capable);
+
+    if hold_capable {
+        let _ = terminal.backend_mut().execute(PopKeyboardEnhancementFlags);
+    }
     let _ = terminal::disable_raw_mode();
     let _ = terminal.backend_mut().execute(LeaveAlternateScreen);
     let _ = terminal.show_cursor();
@@ -43,6 +60,7 @@ fn run_inner(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     dry_run: bool,
     accepted: bool,
+    hold_capable: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if !accepted && !disclaimer_loop(terminal)? {
         return Ok(());
@@ -53,7 +71,11 @@ fn run_inner(
     })?;
 
     let mut app = App::connect(dry_run)?;
+    if hold_capable {
+        app.pad_hold = PadHold::Idle;
+    }
     let result = run_loop(terminal, &mut app);
+    app.pad_release();
 
     if app.main_view == MainView::Transfer {
         app.leave_transfer_view();
@@ -100,6 +122,13 @@ fn run_loop(
 
             terminal::enable_raw_mode()?;
             terminal.backend_mut().execute(EnterAlternateScreen)?;
+            if !matches!(app.pad_hold, PadHold::Tap) {
+                let _ = terminal
+                    .backend_mut()
+                    .execute(PushKeyboardEnhancementFlags(
+                        KeyboardEnhancementFlags::REPORT_EVENT_TYPES,
+                    ));
+            }
             terminal.hide_cursor()?;
             terminal.clear()?;
             continue;
@@ -109,11 +138,23 @@ fn run_loop(
 
         if event::poll(Duration::from_millis(50))?
             && let Event::Key(key) = event::read()?
-            && key.kind == KeyEventKind::Press
-            && handle_key_press(app, key.code)
         {
-            return Ok(());
+            match key.kind {
+                KeyEventKind::Press => {
+                    if handle_key_press(app, key.code) {
+                        return Ok(());
+                    }
+                }
+                KeyEventKind::Release => handle_key_release(app, key.code),
+                KeyEventKind::Repeat => {}
+            }
         }
+    }
+}
+
+fn handle_key_release(app: &mut App, code: KeyCode) {
+    if app.main_view == MainView::Pads && code == KeyCode::Char('p') {
+        app.pad_release();
     }
 }
 
@@ -303,7 +344,7 @@ fn handle_global_key(app: &mut App, code: KeyCode) -> bool {
         KeyCode::Char('r') => app.toggle_recording(),
         KeyCode::Char('R') => app.stop_recording(),
         KeyCode::Char('p') if app.main_view == MainView::Pads => {
-            app.tap_pad();
+            app.trigger_pad();
         }
         KeyCode::Enter if app.main_view == MainView::Pads => {
             app.open_detail_form();
