@@ -76,6 +76,11 @@ enum Commands {
         #[command(subcommand)]
         action: commands::FaderAction,
     },
+    /// Soundpad control (trigger)
+    Pad {
+        #[command(subcommand)]
+        action: commands::PadAction,
+    },
     /// Send raw hex bytes to device (dev builds only)
     #[cfg(debug_assertions)]
     Send {
@@ -147,6 +152,9 @@ fn main() {
         }
         Commands::Fader { ref action } => {
             commands::run_with_disclaimer(&ctx, || commands::fader(&ctx, action))
+        }
+        Commands::Pad { ref action } => {
+            commands::run_with_disclaimer(&ctx, || commands::pad(&ctx, action))
         }
         #[cfg(debug_assertions)]
         Commands::Send { ref hex } => {

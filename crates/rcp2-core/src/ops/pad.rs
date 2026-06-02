@@ -18,6 +18,19 @@ pub fn tap_pad(
     pad_position: usize,
     profile: &DeviceProfile,
 ) -> rcp2_protocol::Result<()> {
+    tap_pad_for(conn, pad_position, profile, BUTTON_PRESS_DELAY)
+}
+
+/// Simulates a tap on a SMART pad button, holding it for the given duration.
+///
+/// # Errors
+/// Returns an error if sending the property update fails.
+pub fn tap_pad_for(
+    conn: &DeviceConnection,
+    pad_position: usize,
+    profile: &DeviceProfile,
+    hold: Duration,
+) -> rcp2_protocol::Result<()> {
     let button_idx = profile.padbutton_offset + pad_position;
     let indices = vec![PHYSICAL_INTERFACE_IDX, button_idx];
     conn.send_property_update(
@@ -25,7 +38,7 @@ pub fn tap_pad(
         "padButtonPressed".into(),
         Value::Bool(true),
     )?;
-    std::thread::sleep(BUTTON_PRESS_DELAY);
+    std::thread::sleep(hold);
     conn.send_property_update(indices, "padButtonPressed".into(), Value::Bool(false))?;
     Ok(())
 }

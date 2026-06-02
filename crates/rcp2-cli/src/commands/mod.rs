@@ -5,6 +5,7 @@ mod dump_cmd;
 mod fader_cmd;
 mod interactive;
 mod monitor_cmd;
+mod pad_cmd;
 mod record_cmd;
 #[cfg(debug_assertions)]
 mod send_cmd;
@@ -33,6 +34,7 @@ pub use connect_cmd::connect;
 pub use dump_cmd::dump;
 pub use fader_cmd::{FaderAction, fader};
 pub use monitor_cmd::monitor;
+pub use pad_cmd::{PadAction, pad};
 pub use record_cmd::{RecordAction, record};
 #[cfg(debug_assertions)]
 pub use send_cmd::send;
