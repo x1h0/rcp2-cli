@@ -1,5 +1,6 @@
 use super::Context;
 use log::info;
+use rcp2_core::DeviceViewModel;
 use rcp2_protocol::transport::hid::{HidTransport, PortType};
 
 pub fn connect(ctx: &Context) -> Result<(), Box<dyn std::error::Error>> {
@@ -32,7 +33,11 @@ pub fn connect(ctx: &Context) -> Result<(), Box<dyn std::error::Error>> {
     conn.wait_for_state()?;
 
     let state = conn.state().snapshot()?;
+    let vm = DeviceViewModel::from_state(&state, conn.model().profile());
     println!("connected: root node = '{}'", state.name);
+    if !vm.system.firmware.is_empty() {
+        println!("  firmware: {}", vm.system.firmware);
+    }
     println!("  properties: {}", state.properties.len());
     println!("  children: {}", state.children.len());
 
