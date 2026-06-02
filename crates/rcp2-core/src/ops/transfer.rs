@@ -436,6 +436,12 @@ impl TransferState {
         let mut files = Vec::new();
 
         for entry in entries.flatten() {
+            let Ok(ftype) = entry.file_type() else {
+                continue;
+            };
+            if ftype.is_symlink() {
+                continue;
+            }
             let Ok(meta) = entry.metadata() else {
                 continue;
             };
@@ -668,6 +674,9 @@ fn copy_dir_recursive(
     for entry in std::fs::read_dir(src)? {
         let entry = entry?;
         let entry_type = entry.file_type()?;
+        if entry_type.is_symlink() {
+            continue;
+        }
         let target = dest.join(entry.file_name());
 
         if entry_type.is_dir() {
