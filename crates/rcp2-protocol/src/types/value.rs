@@ -17,12 +17,21 @@ pub enum Value {
     Unknown(Vec<u8>),
 }
 
+pub(crate) const MAX_DEPTH: usize = 64;
+
 impl Value {
     /// Parses a typed value from the wire format.
     ///
     /// # Errors
     /// Returns a parse error if the type tag or length is invalid.
     pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
+        Self::parse_at(input, 0)
+    }
+
+    pub(crate) fn parse_at(input: &[u8], depth: usize) -> IResult<&[u8], Self> {
+        if depth > MAX_DEPTH {
+            return Err(nom::Err::Error(Error::new(input, ErrorKind::TooLarge)));
+        }
         let (input, data_length_type) = le_u8(input)?;
         let (input, data_length) = match data_length_type {
             0x01 => le_u8(input).map(|(i, v)| (i, v as usize))?,
@@ -64,7 +73,7 @@ impl Value {
                 let mut values = vec![];
                 let mut current = input;
                 while remaining > 0 {
-                    let (next, value) = Self::parse(current)?;
+                    let (next, value) = Self::parse_at(current, depth + 1)?;
                     values.push(value);
                     let consumed = current.len().saturating_sub(next.len());
                     if consumed == 0 || consumed > remaining {

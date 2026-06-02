@@ -19,6 +19,13 @@ impl Structured {
     /// # Errors
     /// Returns a parse error if the bytes are malformed.
     pub fn parse(input: &[u8]) -> IResult<&[u8], Self> {
+        Self::parse_at(input, 0)
+    }
+
+    fn parse_at(input: &[u8], depth: usize) -> IResult<&[u8], Self> {
+        if depth > crate::types::value::MAX_DEPTH {
+            return Err(nom::Err::Error(Error::new(input, ErrorKind::TooLarge)));
+        }
         let (input, name) = parse_c_string(input)?;
         let (input, kind) = le_u8(input)?;
 
@@ -32,7 +39,7 @@ impl Structured {
                     _ => return Err(nom::Err::Error(Error::new(input, ErrorKind::Verify))),
                 };
 
-                let (input, children) = Self::parse_children(input, child_count)?;
+                let (input, children) = Self::parse_children(input, child_count, depth)?;
                 Ok((
                     input,
                     Structured {
@@ -43,7 +50,7 @@ impl Structured {
                 ))
             }
             0x01 => {
-                let (input, properties) = Self::parse_properties(input)?;
+                let (input, properties) = Self::parse_properties(input, depth)?;
                 let (input, close_tag) = le_u8(input)?;
 
                 match close_tag {
@@ -57,7 +64,8 @@ impl Structured {
                     )),
                     0x01 => {
                         let (input, child_count) = le_u8(input)?;
-                        let (input, children) = Self::parse_children(input, child_count as usize)?;
+                        let (input, children) =
+                            Self::parse_children(input, child_count as usize, depth)?;
                         Ok((
                             input,
                             Structured {
@@ -74,24 +82,24 @@ impl Structured {
         }
     }
 
-    fn parse_children(input: &[u8], count: usize) -> IResult<&[u8], Vec<Structured>> {
+    fn parse_children(input: &[u8], count: usize, depth: usize) -> IResult<&[u8], Vec<Structured>> {
         let mut children = Vec::with_capacity(count);
         let mut remaining = input;
         for _ in 0..count {
-            let (input, child) = Structured::parse(remaining)?;
+            let (input, child) = Structured::parse_at(remaining, depth + 1)?;
             children.push(child);
             remaining = input;
         }
         Ok((remaining, children))
     }
 
-    fn parse_properties(input: &[u8]) -> IResult<&[u8], HashMap<String, Value>> {
+    fn parse_properties(input: &[u8], depth: usize) -> IResult<&[u8], HashMap<String, Value>> {
         let (input, count) = le_u8(input)?;
         let mut properties = HashMap::with_capacity(count as usize);
         let mut remaining = input;
         for _ in 0..count {
             let (input, name) = parse_c_string(remaining)?;
-            let (input, value) = Value::parse(input)?;
+            let (input, value) = Value::parse_at(input, depth + 1)?;
             properties.insert(name, value);
             remaining = input;
         }
@@ -179,6 +187,16 @@ mod tests {
             }
         }
         buf
+    }
+
+    #[test]
+    fn deeply_nested_input_is_rejected_not_panicking() {
+        let mut data = Vec::new();
+        for _ in 0..(super::super::value::MAX_DEPTH + 50) {
+            data.extend_from_slice(&[0x00, 0x00, 0x01, 0x01]);
+        }
+        data.extend_from_slice(&[0x00, 0x00, 0x00]);
+        assert!(Structured::parse(&data).is_err());
     }
 
     #[test]
