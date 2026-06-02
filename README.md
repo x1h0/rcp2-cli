@@ -93,8 +93,8 @@ rcp2-cli tui --dry-run 2> trace.log
 
 Commands:
 
-- `rcp2-cli connect` - show device info
-- `rcp2-cli dump` - dump full state tree as JSON
+- `rcp2-cli connect [--full]` - show device info and firmware (serial hidden unless `--full`)
+- `rcp2-cli dump [--full]` - dump state tree as JSON (sensitive values redacted unless `--full`)
 - `rcp2-cli monitor` - stream property updates in real-time
 - `rcp2-cli record status [--json]` - show recording status
 - `rcp2-cli record interactive` - live recording control (start/pause/stop)

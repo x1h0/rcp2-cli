@@ -3,7 +3,7 @@ use log::info;
 use rcp2_core::DeviceViewModel;
 use rcp2_protocol::transport::hid::{HidTransport, PortType};
 
-pub fn connect(ctx: &Context) -> Result<(), Box<dyn std::error::Error>> {
+pub fn connect(ctx: &Context, full: bool) -> Result<(), Box<dyn std::error::Error>> {
     let hid_api = hidapi::HidApi::new()?;
     let devices = HidTransport::enumerate(&hid_api);
 
@@ -13,7 +13,13 @@ pub fn connect(ctx: &Context) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     for device in &devices {
-        println!("found: {device}");
+        if full {
+            println!("found: {device}");
+        } else {
+            let mut device = device.clone();
+            device.serial = None;
+            println!("found: {device}");
+        }
     }
 
     let has_main = devices.iter().any(|d| d.port == PortType::Main);

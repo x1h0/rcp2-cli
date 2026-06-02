@@ -56,9 +56,17 @@ struct Cli {
 #[derive(clap::Subcommand)]
 enum Commands {
     /// Connect to device and show info
-    Connect,
-    /// Dump full device state tree as JSON
-    Dump,
+    Connect {
+        /// Show the serial number (hidden by default)
+        #[arg(long)]
+        full: bool,
+    },
+    /// Dump device state tree as JSON (sensitive values redacted by default)
+    Dump {
+        /// Include sensitive values (serial, network, Bluetooth, SIP) unredacted
+        #[arg(long)]
+        full: bool,
+    },
     /// Monitor property updates in real-time
     Monitor,
     /// Control recording (status/interactive)
@@ -141,8 +149,12 @@ fn main() {
     let flush_guard = FlushOnDrop(buffered_logs);
 
     let result = match cli.command {
-        Commands::Connect => commands::run_with_disclaimer(&ctx, || commands::connect(&ctx)),
-        Commands::Dump => commands::run_with_disclaimer(&ctx, || commands::dump(&ctx)),
+        Commands::Connect { full } => {
+            commands::run_with_disclaimer(&ctx, || commands::connect(&ctx, full))
+        }
+        Commands::Dump { full } => {
+            commands::run_with_disclaimer(&ctx, || commands::dump(&ctx, full))
+        }
         Commands::Monitor => commands::run_with_disclaimer(&ctx, || commands::monitor(&ctx)),
         Commands::Record { ref action } => {
             commands::run_with_disclaimer(&ctx, || commands::record(&ctx, action))
