@@ -177,10 +177,16 @@ const MAX_AUDIO_FILE_SIZE: u64 = 100 * 1024 * 1024;
 /// Returns an error string if the file is missing, empty, too large, or not WAV/MP3.
 pub fn validate_audio_file(path: &str) -> Result<String, String> {
     let p = std::path::Path::new(path);
-    if !p.exists() {
-        return Err(format!("file not found: {path}"));
+    let meta = p
+        .symlink_metadata()
+        .map_err(|_| format!("file not found: {path}"))?;
+    if meta.file_type().is_symlink() {
+        return Err("symlinks are not supported".into());
     }
-    let size = p.metadata().map_or(0, |m| m.len());
+    if !meta.is_file() {
+        return Err("not a regular file".into());
+    }
+    let size = meta.len();
     if size == 0 {
         return Err("file is empty".into());
     }
