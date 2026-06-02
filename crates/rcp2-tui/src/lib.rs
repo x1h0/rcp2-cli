@@ -30,23 +30,22 @@ pub fn run(dry_run: bool, accepted: bool) -> Result<(), Box<dyn std::error::Erro
         original_hook(info);
     }));
 
-    if !accepted {
-        let result = disclaimer_loop(&mut terminal);
-        match result {
-            Ok(false) => {
-                terminal::disable_raw_mode()?;
-                terminal.backend_mut().execute(LeaveAlternateScreen)?;
-                terminal.show_cursor()?;
-                return Ok(());
-            }
-            Err(e) => {
-                terminal::disable_raw_mode()?;
-                terminal.backend_mut().execute(LeaveAlternateScreen)?;
-                terminal.show_cursor()?;
-                return Err(e);
-            }
-            Ok(true) => {}
-        }
+    let result = run_inner(&mut terminal, dry_run, accepted);
+
+    let _ = terminal::disable_raw_mode();
+    let _ = terminal.backend_mut().execute(LeaveAlternateScreen);
+    let _ = terminal.show_cursor();
+
+    result
+}
+
+fn run_inner(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    dry_run: bool,
+    accepted: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if !accepted && !disclaimer_loop(terminal)? {
+        return Ok(());
     }
 
     terminal.draw(|frame| {
@@ -54,16 +53,12 @@ pub fn run(dry_run: bool, accepted: bool) -> Result<(), Box<dyn std::error::Erro
     })?;
 
     let mut app = App::connect(dry_run)?;
-    let result = run_loop(&mut terminal, &mut app);
+    let result = run_loop(terminal, &mut app);
 
     if app.main_view == MainView::Transfer {
         app.leave_transfer_view();
     }
     let _ = app.conn.flush();
-
-    terminal::disable_raw_mode()?;
-    terminal.backend_mut().execute(LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
 
     result
 }
