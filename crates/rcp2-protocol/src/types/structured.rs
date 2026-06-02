@@ -83,7 +83,7 @@ impl Structured {
     }
 
     fn parse_children(input: &[u8], count: usize, depth: usize) -> IResult<&[u8], Vec<Structured>> {
-        let mut children = Vec::with_capacity(count);
+        let mut children = Vec::new();
         let mut remaining = input;
         for _ in 0..count {
             let (input, child) = Structured::parse_at(remaining, depth + 1)?;
