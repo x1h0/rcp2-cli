@@ -38,6 +38,9 @@ impl Value {
             0x02 => le_u16(input).map(|(i, v)| (i, v as usize))?,
             _ => return Err(nom::Err::Error(Error::new(input, ErrorKind::Verify))),
         };
+        if data_length == 0 {
+            return Err(nom::Err::Error(Error::new(input, ErrorKind::Verify)));
+        }
 
         let (input, data_type) = le_u8(input)?;
         match data_type {
@@ -234,6 +237,14 @@ mod tests {
         let val = Value::Unknown(vec![0x01, 0x02]);
         let mut buf = Vec::new();
         assert!(val.write(&mut buf).is_err());
+    }
+
+    #[test]
+    fn zero_data_length_is_rejected_not_panicking() {
+        for data_type in [0x01u8, 0x04, 0x06, 0x08, 0xFF] {
+            let data = [0x01, 0x00, data_type];
+            assert!(Value::parse(&data).is_err());
+        }
     }
 
     #[test]
