@@ -182,12 +182,10 @@ pub enum PortType {
 
 impl std::fmt::Display for DeviceInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let name = self
-            .model
-            .map_or_else(
-                || self.product.as_deref().unwrap_or("RØDECaster"),
-                |m| m.profile().display_name,
-            );
+        let name = self.model.map_or_else(
+            || self.product.as_deref().unwrap_or("RØDECaster"),
+            |m| m.profile().display_name,
+        );
         let port_label = match self.port {
             PortType::Main => "main",
             PortType::Secondary => "secondary",

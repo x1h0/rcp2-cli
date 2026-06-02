@@ -23,8 +23,9 @@ impl Drop for RawModeGuard {
 /// Returns an error if reading from the terminal fails.
 pub fn poll_key(timeout: Duration) -> std::io::Result<Option<KeyEvent>> {
     if event::poll(timeout)?
-        && let Event::Key(key) = event::read()? {
-            return Ok(Some(key));
-        }
+        && let Event::Key(key) = event::read()?
+    {
+        return Ok(Some(key));
+    }
     Ok(None)
 }

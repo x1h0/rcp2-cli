@@ -132,7 +132,9 @@ fn main() {
 
     let buffered_logs = if is_tui && std::io::stderr().is_terminal() {
         let buffer = Arc::new(Mutex::new(Vec::new()));
-        builder.target(env_logger::Target::Pipe(Box::new(LogBuffer(buffer.clone()))));
+        builder.target(env_logger::Target::Pipe(Box::new(LogBuffer(
+            buffer.clone(),
+        ))));
         Some(buffer)
     } else {
         None

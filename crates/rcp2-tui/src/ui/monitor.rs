@@ -41,6 +41,8 @@ pub(super) fn render_monitor(frame: &mut Frame, area: Rect, app: &App) {
 
     frame.render_widget(list, area);
 
-    let position = total.saturating_sub(inner_height).saturating_sub(app.log_scroll);
+    let position = total
+        .saturating_sub(inner_height)
+        .saturating_sub(app.log_scroll);
     render_scrollbar(frame, area, total, inner_height, position);
 }

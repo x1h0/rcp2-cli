@@ -52,7 +52,11 @@ pub fn transfer(ctx: &Context, action: &TransferAction) -> Result<(), Box<dyn st
         return Err("no SD card detected, insert a card and try again".into());
     }
 
-    let label = if mode == TRANSFER_MODE_SD { "sd" } else { "emmc" };
+    let label = if mode == TRANSFER_MODE_SD {
+        "sd"
+    } else {
+        "emmc"
+    };
     pad::activate_transfer_mode(&conn, mode)?;
     println!("activating transfer mode ({label})...");
 
@@ -63,9 +67,7 @@ pub fn transfer(ctx: &Context, action: &TransferAction) -> Result<(), Box<dyn st
     transfer_session(&conn, &mut guard.ts)
 }
 
-fn prompt_storage(
-    vm: &rcp2_core::DeviceViewModel,
-) -> Result<u32, Box<dyn std::error::Error>> {
+fn prompt_storage(vm: &rcp2_core::DeviceViewModel) -> Result<u32, Box<dyn std::error::Error>> {
     let sd = if vm.has_storage() {
         "SD Card (recordings, scene exports)"
     } else {

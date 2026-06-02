@@ -1,7 +1,7 @@
 use super::App;
 use crate::transfer::{PadDownload, PadDownloadState, PadDownloadStatus, PadUploadState};
-use rcp2_core::ops::{TRANSFER_MODE_EMMC, TRANSFER_MODE_SD};
 use rcp2_core::ops::pad as pad_ops;
+use rcp2_core::ops::{TRANSFER_MODE_EMMC, TRANSFER_MODE_SD};
 
 impl App {
     pub fn enter_transfer_view(&mut self) {
