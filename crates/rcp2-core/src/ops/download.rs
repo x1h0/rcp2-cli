@@ -32,20 +32,23 @@ impl PadDownload {
             }
             PadDownloadState::Copying => {
                 let mount = transfer.mount_point.as_deref().unwrap_or("");
-                let src = self.host_file_path(mount);
                 let dest = std::path::Path::new(&self.save_path);
 
-                info!("pad download: {} -> {}", src.display(), dest.display());
-
-                let mut msg = if src.exists() {
-                    match std::fs::copy(&src, dest) {
-                        Ok(bytes) => {
-                            format!("saved to {} ({})", dest.display(), format_size(bytes))
+                let mut msg = match self.host_file_path(mount) {
+                    Some(src) => {
+                        info!("pad download: {} -> {}", src.display(), dest.display());
+                        if src.exists() {
+                            match std::fs::copy(&src, dest) {
+                                Ok(bytes) => {
+                                    format!("saved to {} ({})", dest.display(), format_size(bytes))
+                                }
+                                Err(e) => format!("copy failed: {e}"),
+                            }
+                        } else {
+                            format!("file not found: {}", src.display())
                         }
-                        Err(e) => format!("copy failed: {e}"),
                     }
-                } else {
-                    format!("file not found: {}", src.display())
+                    None => format!("invalid device file path: {}", self.device_path),
                 };
 
                 self.state = PadDownloadState::Deactivating;

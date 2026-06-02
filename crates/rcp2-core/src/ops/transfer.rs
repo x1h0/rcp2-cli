@@ -182,16 +182,27 @@ impl PadDownload {
     }
 
     #[must_use]
-    pub fn host_file_path(&self, mount_point: &str) -> PathBuf {
-        if let Some(pad_relative) = self.device_path.strip_prefix(DEVICE_PAD_PREFIX) {
-            PathBuf::from(mount_point).join("pads").join(pad_relative)
+    pub fn host_file_path(&self, mount_point: &str) -> Option<PathBuf> {
+        let relative = if let Some(pad_relative) = self.device_path.strip_prefix(DEVICE_PAD_PREFIX) {
+            Path::new("pads").join(pad_relative)
         } else {
-            PathBuf::from(mount_point).join(
+            PathBuf::from(
                 self.device_path
                     .strip_prefix("/Application/emmc-data/")
                     .unwrap_or(&self.device_path),
             )
+        };
+        if relative.components().any(|c| {
+            matches!(
+                c,
+                std::path::Component::ParentDir
+                    | std::path::Component::RootDir
+                    | std::path::Component::Prefix(_)
+            )
+        }) {
+            return None;
         }
+        Some(PathBuf::from(mount_point).join(relative))
     }
 }
 
@@ -745,5 +756,20 @@ mod tests {
         assert_eq!(state.current_dir, "/sub");
 
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn host_file_path_rejects_traversal_and_absolute() {
+        let dl = PadDownload::new("/Application/emmc-data/pads/1/sound.wav", "Pad");
+        assert_eq!(
+            dl.host_file_path("/mnt"),
+            Some(PathBuf::from("/mnt/pads/1/sound.wav"))
+        );
+
+        let dl = PadDownload::new("/Application/emmc-data/../../../outside/file", "Pad");
+        assert_eq!(dl.host_file_path("/mnt"), None);
+
+        let dl = PadDownload::new("/outside/file", "Pad");
+        assert_eq!(dl.host_file_path("/mnt"), None);
     }
 }
