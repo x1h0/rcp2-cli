@@ -86,6 +86,7 @@ pub enum PadUploadState {
     Deactivating,
     Remounting,
     CreatingNode,
+    Finalizing,
     Done,
 }
 
@@ -131,9 +132,63 @@ impl PadUpload {
 
     #[must_use]
     pub fn host_target_dir(&self, mount_point: &str) -> PathBuf {
-        PathBuf::from(mount_point)
-            .join("pads")
-            .join((self.pad_idx + 1).to_string())
+        host_pad_dir(mount_point, self.pad_idx)
+    }
+}
+
+#[must_use]
+pub fn host_pad_dir(mount_point: &str, pad_idx: usize) -> PathBuf {
+    PathBuf::from(mount_point)
+        .join("pads")
+        .join((pad_idx + 1).to_string())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum PadMoveState {
+    Activating,
+    WaitingForMount,
+    Moving,
+    Deactivating,
+    Remounting,
+    CreatingNode,
+    DeletingOld,
+    Finalizing,
+    Done,
+}
+
+pub struct PadMove {
+    pub state: PadMoveState,
+    pub src_idx: usize,
+    pub src_child_index: usize,
+    pub dst_idx: usize,
+    pub props: std::collections::HashMap<String, rcp2_protocol::types::Value>,
+    pub filename: Option<String>,
+    pub pad_name: String,
+    pub message: String,
+    pub state_entered_at: Option<std::time::Instant>,
+}
+
+impl PadMove {
+    #[must_use]
+    pub fn new(
+        src_idx: usize,
+        src_child_index: usize,
+        dst_idx: usize,
+        props: std::collections::HashMap<String, rcp2_protocol::types::Value>,
+        filename: Option<String>,
+        pad_name: String,
+    ) -> Self {
+        PadMove {
+            state: PadMoveState::Activating,
+            src_idx,
+            src_child_index,
+            dst_idx,
+            props,
+            filename,
+            pad_name,
+            message: String::new(),
+            state_entered_at: None,
+        }
     }
 }
 
@@ -183,7 +238,8 @@ impl PadDownload {
 
     #[must_use]
     pub fn host_file_path(&self, mount_point: &str) -> Option<PathBuf> {
-        let relative = if let Some(pad_relative) = self.device_path.strip_prefix(DEVICE_PAD_PREFIX) {
+        let relative = if let Some(pad_relative) = self.device_path.strip_prefix(DEVICE_PAD_PREFIX)
+        {
             Path::new("pads").join(pad_relative)
         } else {
             PathBuf::from(

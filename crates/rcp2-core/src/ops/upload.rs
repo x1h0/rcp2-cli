@@ -104,6 +104,7 @@ impl PadUpload {
             PadUploadState::Deactivating => self.poll_deactivating(conn),
             PadUploadState::Remounting => self.poll_remounting(),
             PadUploadState::CreatingNode => self.poll_create_node(conn, vm),
+            PadUploadState::Finalizing => self.poll_finalizing(),
             PadUploadState::Done => PadUploadStatus::Done(self.message.clone()),
             PadUploadState::Prompting => PadUploadStatus::InProgress(String::new()),
         }
@@ -228,14 +229,31 @@ impl PadUpload {
         ) {
             Ok(()) => {
                 self.send_envelope(conn, sp_idx, insert_at);
-                self.state = PadUploadState::Done;
-                PadUploadStatus::Done(format!("pad created: {}", self.pad_name))
+                if let Err(e) = pad_ops::remount_pad_storage(conn) {
+                    warn!("failed to remount pad storage: {e}");
+                }
+                self.message = format!("pad created: {}", self.pad_name);
+                self.state = PadUploadState::Finalizing;
+                self.state_entered_at = Some(Instant::now());
+                PadUploadStatus::InProgress("reloading pad storage...".into())
             }
             Err(e) => {
                 self.state = PadUploadState::Done;
                 PadUploadStatus::Error(format!("failed to create pad node: {e}"))
             }
         }
+    }
+
+    fn poll_finalizing(&mut self) -> PadUploadStatus {
+        let elapsed = self
+            .state_entered_at
+            .map(|t| t.elapsed())
+            .unwrap_or_default();
+        if elapsed < Duration::from_secs(1) {
+            return PadUploadStatus::InProgress("reloading pad storage...".into());
+        }
+        self.state = PadUploadState::Done;
+        PadUploadStatus::Done(self.message.clone())
     }
 
     fn send_envelope(&self, conn: &DeviceConnection, sp_idx: usize, child_idx: usize) {

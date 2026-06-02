@@ -37,11 +37,9 @@ pub fn run(dry_run: bool, accepted: bool) -> Result<(), Box<dyn std::error::Erro
 
     let hold_capable = supports_keyboard_enhancement().unwrap_or(false);
     if hold_capable {
-        let _ = terminal
-            .backend_mut()
-            .execute(PushKeyboardEnhancementFlags(
-                KeyboardEnhancementFlags::REPORT_EVENT_TYPES,
-            ));
+        let _ = terminal.backend_mut().execute(PushKeyboardEnhancementFlags(
+            KeyboardEnhancementFlags::REPORT_EVENT_TYPES,
+        ));
     }
 
     let result = run_inner(&mut terminal, dry_run, accepted, hold_capable);
@@ -123,11 +121,9 @@ fn run_loop(
             terminal::enable_raw_mode()?;
             terminal.backend_mut().execute(EnterAlternateScreen)?;
             if !matches!(app.pad_hold, PadHold::Tap) {
-                let _ = terminal
-                    .backend_mut()
-                    .execute(PushKeyboardEnhancementFlags(
-                        KeyboardEnhancementFlags::REPORT_EVENT_TYPES,
-                    ));
+                let _ = terminal.backend_mut().execute(PushKeyboardEnhancementFlags(
+                    KeyboardEnhancementFlags::REPORT_EVENT_TYPES,
+                ));
             }
             terminal.hide_cursor()?;
             terminal.clear()?;
@@ -176,6 +172,14 @@ fn handle_key_press(app: &mut App, code: KeyCode) -> bool {
 
     if handle_modal_key(app, code) {
         return false;
+    }
+
+    if app.pad_move.is_some() {
+        return false;
+    }
+
+    if app.move_selection.is_some() {
+        return handle_move_target_key(app, code);
     }
 
     if app.detail_form.is_some() {
@@ -250,6 +254,20 @@ fn handle_modal_key(app: &mut App, code: KeyCode) -> bool {
         return true;
     }
 
+    false
+}
+
+fn handle_move_target_key(app: &mut App, code: KeyCode) -> bool {
+    match code {
+        KeyCode::Esc => app.cancel_move_target(),
+        KeyCode::Left | KeyCode::Char('h') => app.move_target_prev_bank(),
+        KeyCode::Right | KeyCode::Char('l') => app.move_target_next_bank(),
+        KeyCode::Up | KeyCode::Char('k') => app.move_target_prev_pad(),
+        KeyCode::Down | KeyCode::Char('j') => app.move_target_next_pad(),
+        KeyCode::Char(c @ '1'..='8') => app.move_target_select((c as usize) - ('1' as usize)),
+        KeyCode::Enter => app.confirm_move_target(),
+        _ => {}
+    }
     false
 }
 

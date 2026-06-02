@@ -1,6 +1,6 @@
-use super::{App, ConfirmAction, ConfirmDialog, PadHold};
+use super::{App, ConfirmAction, ConfirmDialog, MoveSelection, PadHold};
 use crate::detail_form::{DetailForm, FieldKind};
-use crate::transfer::{PadUpload, PadUploadStatus};
+use crate::transfer::{PadMove, PadMoveStatus, PadUpload, PadUploadStatus};
 use log::info;
 use rcp2_core::ops::TRANSFER_MODE_EMMC;
 use rcp2_core::ops::pad as pad_ops;
@@ -150,6 +150,7 @@ impl App {
                         "create" => self.confirm_create_pad(),
                         "replaceConfirm" => self.confirm_replace_sound(),
                         "replaceCancel" => self.open_detail_form(),
+                        "move" => self.start_move_target(),
                         "delete" => self.delete_pad(),
                         _ => {}
                     }
@@ -536,6 +537,213 @@ impl App {
                 self.request_full_state();
             }
             Err(e) => self.status = format!("delete failed: {e}"),
+        }
+    }
+
+    fn start_move_target(&mut self) {
+        if self.dry_run {
+            self.status = "move disabled in dry-run".into();
+            return;
+        }
+        let Some(pad) = self.selected_pad_info().cloned() else {
+            return;
+        };
+        self.detail_form = None;
+        if !self.snap_move_cursor_to_empty() {
+            self.status = "no empty slot available".into();
+            return;
+        }
+        self.move_selection = Some(MoveSelection {
+            src_idx: pad.idx,
+            src_child_index: pad.child_index,
+            name: pad.name.clone(),
+        });
+        self.status = format!(
+            "move \"{}\": select empty target slot (Enter confirm, Esc cancel)",
+            pad.name
+        );
+    }
+
+    fn slot_is_empty(&self, bank: usize, display_pos: usize) -> bool {
+        let logical = rcp2_core::BankView::logical_index(display_pos, self.profile);
+        let idx = bank * self.profile.pads_per_bank + logical;
+        !self.vm.pads.iter().any(|p| p.idx == idx)
+    }
+
+    fn first_empty_in_bank(&self, bank: usize) -> Option<usize> {
+        (0..self.profile.pads_per_bank).find(|&pos| self.slot_is_empty(bank, pos))
+    }
+
+    fn snap_move_cursor_to_empty(&mut self) -> bool {
+        if let Some(pos) = self.first_empty_in_bank(self.vm.selected_bank) {
+            self.selected_pad = pos;
+            return true;
+        }
+        for b in 0..self.vm.bank_count() {
+            if let Some(pos) = self.first_empty_in_bank(b) {
+                self.vm.selected_bank = b;
+                self.sync_bank_to_device();
+                self.selected_pad = pos;
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn move_target_next_pad(&mut self) {
+        let ppb = self.profile.pads_per_bank;
+        for step in 1..=ppb {
+            let pos = (self.selected_pad + step) % ppb;
+            if self.slot_is_empty(self.vm.selected_bank, pos) {
+                self.selected_pad = pos;
+                return;
+            }
+        }
+    }
+
+    pub fn move_target_prev_pad(&mut self) {
+        let ppb = self.profile.pads_per_bank;
+        for step in 1..=ppb {
+            let pos = (self.selected_pad + ppb - step) % ppb;
+            if self.slot_is_empty(self.vm.selected_bank, pos) {
+                self.selected_pad = pos;
+                return;
+            }
+        }
+    }
+
+    pub fn move_target_next_bank(&mut self) {
+        let count = self.vm.bank_count();
+        if count == 0 {
+            return;
+        }
+        self.vm.selected_bank = (self.vm.selected_bank + 1) % count;
+        self.sync_bank_to_device();
+        self.selected_pad = self.first_empty_in_bank(self.vm.selected_bank).unwrap_or(0);
+    }
+
+    pub fn move_target_prev_bank(&mut self) {
+        let count = self.vm.bank_count();
+        if count == 0 {
+            return;
+        }
+        self.vm.selected_bank = (self.vm.selected_bank + count - 1) % count;
+        self.sync_bank_to_device();
+        self.selected_pad = self.first_empty_in_bank(self.vm.selected_bank).unwrap_or(0);
+    }
+
+    pub fn move_target_select(&mut self, pos: usize) {
+        if pos < self.profile.pads_per_bank && self.slot_is_empty(self.vm.selected_bank, pos) {
+            self.selected_pad = pos;
+        }
+    }
+
+    pub fn confirm_move_target(&mut self) {
+        let Some(sel) = self.move_selection.clone() else {
+            return;
+        };
+        let position = self.logical_pad_position();
+        let dst_idx = self.vm.selected_bank * self.profile.pads_per_bank + position;
+        if dst_idx == sel.src_idx {
+            self.status = "same slot — pick another".into();
+            return;
+        }
+        if self.vm.pads.iter().any(|p| p.idx == dst_idx) {
+            self.status = "slot occupied — pick an empty slot".into();
+            return;
+        }
+        self.confirm_dialog = Some(ConfirmDialog {
+            title: "Move Pad".into(),
+            message: format!(
+                "Move \"{}\" to bank {} slot {}?\n\n⚠ Transfer mode will be activated.\n⚠ Device audio & pads will be unavailable.",
+                sel.name,
+                self.vm.selected_bank + 1,
+                position + 1
+            ),
+            action: ConfirmAction::MovePad { dst_idx },
+        });
+    }
+
+    pub fn cancel_move_target(&mut self) {
+        if self.move_selection.take().is_some() {
+            self.status = "move cancelled".into();
+        }
+    }
+
+    pub(super) fn start_move_pad_transfer(&mut self, dst_idx: usize) {
+        let Some(sel) = self.move_selection.take() else {
+            return;
+        };
+        if !self.require_no_active_download() {
+            return;
+        }
+        if self.pad_upload.is_some() {
+            self.status = "upload in progress".into();
+            return;
+        }
+        let Some(sp_idx) = self.vm.soundpads_idx else {
+            return;
+        };
+        let snapshot = match self.conn.state().snapshot() {
+            Ok(s) => s,
+            Err(e) => {
+                self.status = format!("move failed: {e}");
+                return;
+            }
+        };
+        let Some(node) = snapshot
+            .children
+            .get(sp_idx)
+            .and_then(|sp| sp.children.get(sel.src_child_index))
+        else {
+            self.status = "move failed: source pad not found".into();
+            return;
+        };
+
+        let mut props = node.properties.clone();
+        props.insert("padActive".into(), Value::Bool(false));
+        props.insert("padProgress".into(), Value::F64(0.0));
+
+        let filename = props.get("padFilePath").and_then(|v| match v {
+            Value::String(p) if !p.is_empty() => std::path::Path::new(p)
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned()),
+            _ => None,
+        });
+        let has_file = filename.is_some();
+        if has_file && !self.require_transfer_tools() {
+            return;
+        }
+
+        self.pad_move = Some(PadMove::new(
+            sel.src_idx,
+            sel.src_child_index,
+            dst_idx,
+            props,
+            filename,
+            sel.name,
+        ));
+        if has_file {
+            self.activate_transfer_mode(TRANSFER_MODE_EMMC);
+        }
+        self.status = "moving pad...".into();
+    }
+
+    pub(super) fn poll_pad_move(&mut self) {
+        let Some(ref mut mv) = self.pad_move else {
+            return;
+        };
+        match mv.poll(&self.conn, &mut self.transfer, &self.vm) {
+            PadMoveStatus::InProgress(msg) => self.status = msg,
+            PadMoveStatus::Done(msg) => {
+                self.status = msg;
+                self.pad_move = None;
+                self.request_full_state();
+            }
+            PadMoveStatus::Error(msg) => {
+                self.status = msg;
+                self.pad_move = None;
+            }
         }
     }
 

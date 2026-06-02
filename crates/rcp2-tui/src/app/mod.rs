@@ -2,7 +2,7 @@ mod pad_ops;
 mod transfer_ops;
 
 use crate::detail_form::DetailForm;
-use crate::transfer::{PadDownload, PadUpload, TransferState, TransferStatus};
+use crate::transfer::{PadDownload, PadMove, PadUpload, TransferState, TransferStatus};
 use log::{info, warn};
 use rcp2_core::{BankView, DeviceProfile, DeviceViewModel, PadInfo, RecordingStatus};
 use rcp2_protocol::device::{DeviceConnection, DeviceEvent};
@@ -31,6 +31,16 @@ pub enum ConfirmAction {
         duration: Option<f64>,
     },
     CreatePad,
+    MovePad {
+        dst_idx: usize,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct MoveSelection {
+    pub src_idx: usize,
+    pub src_child_index: usize,
+    pub name: String,
 }
 
 pub struct ConfirmDialog {
@@ -68,6 +78,8 @@ pub struct App {
     pub transfer: TransferState,
     pub pad_download: Option<PadDownload>,
     pub pad_upload: Option<PadUpload>,
+    pub pad_move: Option<PadMove>,
+    pub move_selection: Option<MoveSelection>,
     pub confirm_dialog: Option<ConfirmDialog>,
     pub(super) rec_started_at: Option<Instant>,
     pub(super) rec_paused_elapsed: u64,
@@ -127,6 +139,8 @@ impl App {
             transfer: TransferState::new(),
             pad_download: None,
             pad_upload: None,
+            pad_move: None,
+            move_selection: None,
             confirm_dialog: None,
             rec_started_at: None,
             rec_paused_elapsed: 0,
@@ -153,8 +167,7 @@ impl App {
                         && indices.len() == 2
                         && indices[0] == rcp2_protocol::device::PHYSICAL_INTERFACE_IDX
                     {
-                        let button_pos =
-                            indices[1].saturating_sub(self.profile.padbutton_offset);
+                        let button_pos = indices[1].saturating_sub(self.profile.padbutton_offset);
                         let pad_idx =
                             self.vm.selected_bank * self.profile.pads_per_bank + button_pos;
                         self.modal = ModalState::None;
@@ -203,6 +216,7 @@ impl App {
 
         self.poll_pad_download();
         self.poll_pad_upload();
+        self.poll_pad_move();
 
         if self.transfer.is_copying() {
             self.transfer.poll_copy();
@@ -234,6 +248,7 @@ impl App {
                 self.start_pad_replace_with_env(&path, env_start, env_stop, duration);
             }
             ConfirmAction::CreatePad => self.create_new_pad(),
+            ConfirmAction::MovePad { dst_idx } => self.start_move_pad_transfer(dst_idx),
         }
     }
 

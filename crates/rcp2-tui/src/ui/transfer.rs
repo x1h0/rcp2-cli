@@ -1,5 +1,7 @@
 use crate::app::App;
-use crate::transfer::{PadDownloadState, PadUploadState, TransferStatus, format_size};
+use crate::transfer::{
+    PadDownloadState, PadMoveState, PadUploadState, TransferStatus, format_size,
+};
 use ratatui::prelude::*;
 use ratatui::widgets::{Block, Borders, List, ListItem, Padding, Paragraph, Wrap};
 
@@ -58,10 +60,7 @@ fn render_storage_choice(frame: &mut Frame, area: Rect, sd_available: bool) {
         Line::from(vec![
             Span::styled("    2 ", Style::default().fg(Color::DarkGray)),
             Span::styled("SD Card", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                "  (no card inserted)",
-                Style::default().fg(Color::DarkGray),
-            ),
+            Span::styled("  (no card inserted)", Style::default().fg(Color::DarkGray)),
         ])
     };
 
@@ -305,6 +304,50 @@ pub(super) fn render_pad_download_overlay(
 
     let block = Block::default()
         .title(title)
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(border_color))
+        .padding(Padding::new(1, 1, 0, 0));
+
+    let paragraph = Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: false });
+    frame.render_widget(paragraph, area);
+}
+
+pub(super) fn render_pad_move_overlay(
+    frame: &mut Frame,
+    area: Rect,
+    mv: &crate::transfer::PadMove,
+) {
+    let (border_color, body) = match mv.state {
+        PadMoveState::Moving => (Color::Green, "  Moving sound file..."),
+        PadMoveState::Deactivating | PadMoveState::Remounting => {
+            (Color::Cyan, "  Remounting pad storage...")
+        }
+        PadMoveState::CreatingNode => (Color::Cyan, "  Creating pad on target slot..."),
+        PadMoveState::DeletingOld => (Color::Cyan, "  Removing pad from source slot..."),
+        PadMoveState::Finalizing => (Color::Cyan, "  Reloading pad storage..."),
+        PadMoveState::Done => (Color::Green, "  Done."),
+        _ => (Color::Yellow, "  Activating transfer mode..."),
+    };
+
+    let lines = vec![
+        Line::raw(""),
+        Line::styled(
+            format!("  Moving \"{}\"", mv.pad_name),
+            Style::default().fg(Color::White).bold(),
+        ),
+        Line::raw(""),
+        Line::styled(body, Style::default().fg(border_color)),
+        Line::raw(""),
+        Line::styled(
+            "  \u{26A0} Device audio & pads are unavailable.",
+            Style::default().fg(Color::Yellow),
+        ),
+    ];
+
+    let block = Block::default()
+        .title(" Move Pad ")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(border_color))
         .padding(Padding::new(1, 1, 0, 0));

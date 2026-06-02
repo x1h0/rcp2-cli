@@ -80,9 +80,14 @@ pub(super) fn render_pad_list(frame: &mut Frame, area: Rect, app: &App) {
             } else {
                 let label = "(empty)";
                 let pad_len = name_max.saturating_sub(label.len());
+                let style = if app.move_selection.is_some() {
+                    Style::default().fg(Color::Cyan)
+                } else {
+                    Style::default().fg(Color::DarkGray)
+                };
                 spans.push(Span::raw(cursor));
                 spans.push(Span::raw("    "));
-                spans.push(Span::styled(label, Style::default().fg(Color::DarkGray)));
+                spans.push(Span::styled(label, style));
                 spans.push(Span::raw(" ".repeat(pad_len)));
             }
         }

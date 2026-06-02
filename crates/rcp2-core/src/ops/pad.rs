@@ -3,6 +3,7 @@ use log::{info, warn};
 use rcp2_protocol::device::{DeviceConnection, DeviceProfile, PHYSICAL_INTERFACE_IDX};
 use rcp2_protocol::packet::child_added::ChildAddedPacket;
 use rcp2_protocol::types::Value;
+use std::collections::HashMap;
 use std::time::Duration;
 
 pub const DEFAULT_PRESS: Duration = Duration::from_millis(50);
@@ -142,7 +143,7 @@ pub fn create_pad_node(
 
     std::thread::sleep(NODE_CREATION_DELAY);
 
-    let device_path = format!("/Application/emmc-data/pads/{}/{}", pad_idx + 1, filename);
+    let device_path = pad_dir_file_path(pad_idx, filename);
 
     let indices = vec![soundpads_idx, insert_at];
     let props: Vec<(&str, Value)> = vec![
@@ -207,6 +208,79 @@ pub fn create_pad_node(
 
     info!("pad node created with {} properties", props.len());
     Ok(())
+}
+
+fn clone_props_for_slot<S: std::hash::BuildHasher>(
+    props: &HashMap<String, Value, S>,
+    pad_idx: usize,
+    device_path: &str,
+) -> Vec<(String, Value)> {
+    let idx_value = Value::U32(u32::try_from(pad_idx).unwrap_or(0));
+    let custom_trigger = matches!(props.get("padTriggerCustom"), Some(Value::Bool(true)));
+
+    let mut out = Vec::with_capacity(props.len() + 3);
+    out.push(("padIdx".to_string(), idx_value.clone()));
+    out.push((
+        "padFilePath".to_string(),
+        Value::String(device_path.to_string()),
+    ));
+    if !custom_trigger {
+        out.push(("padTriggerControl".to_string(), idx_value));
+    }
+    for (name, value) in props {
+        if name == "padIdx" || name == "padFilePath" {
+            continue;
+        }
+        if name == "padTriggerControl" && !custom_trigger {
+            continue;
+        }
+        out.push((name.clone(), value.clone()));
+    }
+    out
+}
+
+/// Creates a new PAD child node on the device by replaying an existing property
+/// map, overriding `padIdx` and `padFilePath` for the target slot.
+///
+/// # Errors
+/// Returns an error if sending the child-added packet fails.
+pub fn create_pad_node_from_props<S: std::hash::BuildHasher>(
+    conn: &DeviceConnection,
+    soundpads_idx: usize,
+    insert_at: usize,
+    pad_idx: usize,
+    device_path: &str,
+    props: &HashMap<String, Value, S>,
+) -> rcp2_protocol::Result<()> {
+    info!(
+        "cloning PAD node at SOUNDPADS[{soundpads_idx}] position {insert_at} for padIdx {pad_idx} ({} props)",
+        props.len()
+    );
+
+    let packet = ChildAddedPacket {
+        path: vec![soundpads_idx],
+        insert_index: insert_at,
+        node_name: "PAD".into(),
+    };
+    conn.send_packet(Box::new(packet))?;
+
+    std::thread::sleep(NODE_CREATION_DELAY);
+
+    let indices = vec![soundpads_idx, insert_at];
+    for (name, value) in clone_props_for_slot(props, pad_idx, device_path) {
+        if let Err(e) = conn.send_property_update(indices.clone(), name.clone(), value) {
+            warn!("failed to send {name}: {e}");
+        }
+        std::thread::sleep(PROPERTY_UPDATE_DELAY);
+    }
+
+    info!("pad node cloned with {} properties", props.len());
+    Ok(())
+}
+
+#[must_use]
+pub fn pad_dir_file_path(pad_idx: usize, filename: &str) -> String {
+    format!("/Application/emmc-data/pads/{}/{}", pad_idx + 1, filename)
 }
 
 const MAX_AUDIO_FILE_SIZE: u64 = 100 * 1024 * 1024;
@@ -308,6 +382,72 @@ pub fn remount_pad_storage(conn: &DeviceConnection) -> rcp2_protocol::Result<()>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pad_dir_file_path_formats_correctly() {
+        assert_eq!(
+            pad_dir_file_path(0, "sound.wav"),
+            "/Application/emmc-data/pads/1/sound.wav"
+        );
+        assert_eq!(
+            pad_dir_file_path(9, "sound.mp3"),
+            "/Application/emmc-data/pads/10/sound.mp3"
+        );
+    }
+
+    #[test]
+    fn clone_props_overrides_idx_and_path() {
+        let mut props = HashMap::new();
+        props.insert("padIdx".to_string(), Value::U32(3));
+        props.insert(
+            "padFilePath".to_string(),
+            Value::String("/Application/emmc-data/pads/4/sound.wav".into()),
+        );
+        props.insert("padName".to_string(), Value::String("Horn".into()));
+        props.insert("padGain".to_string(), Value::F64(-6.0));
+        props.insert("padTriggerControl".to_string(), Value::U32(3));
+        props.insert("padTriggerCustom".to_string(), Value::Bool(false));
+
+        let entries = clone_props_for_slot(&props, 10, "/Application/emmc-data/pads/11/sound.wav");
+
+        assert_eq!(entries[0], ("padIdx".to_string(), Value::U32(10)));
+        assert!(
+            entries
+                .iter()
+                .any(|(n, v)| n == "padTriggerControl" && *v == Value::U32(10)),
+            "non-custom trigger control must retarget to the new slot index"
+        );
+        assert_eq!(
+            entries
+                .iter()
+                .filter(|(n, _)| n == "padTriggerControl")
+                .count(),
+            1
+        );
+        assert_eq!(
+            entries[1],
+            (
+                "padFilePath".to_string(),
+                Value::String("/Application/emmc-data/pads/11/sound.wav".into())
+            )
+        );
+        assert_eq!(entries.iter().filter(|(n, _)| n == "padIdx").count(), 1);
+        assert_eq!(
+            entries.iter().filter(|(n, _)| n == "padFilePath").count(),
+            1
+        );
+        assert!(
+            entries
+                .iter()
+                .any(|(n, v)| n == "padName" && *v == Value::String("Horn".into()))
+        );
+        assert!(
+            entries
+                .iter()
+                .any(|(n, v)| n == "padGain" && *v == Value::F64(-6.0))
+        );
+        assert_eq!(entries.len(), props.len());
+    }
 
     #[test]
     fn device_pad_path_formats_correctly() {

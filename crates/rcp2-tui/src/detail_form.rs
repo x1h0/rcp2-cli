@@ -291,6 +291,14 @@ impl DetailForm {
             value_display: String::new(),
             property: Some("play".into()),
         });
+        if !dry_run {
+            fields.push(FormField {
+                label: "Move pad".into(),
+                kind: FieldKind::Action,
+                value_display: String::new(),
+                property: Some("move".into()),
+            });
+        }
         fields.push(FormField {
             label: "Delete pad".into(),
             kind: FieldKind::Action,

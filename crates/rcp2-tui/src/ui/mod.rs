@@ -180,6 +180,8 @@ fn render_main(frame: &mut Frame, area: Rect, app: &mut App) {
                         .border_style(Style::default().fg(Color::Yellow)),
                 );
                 frame.render_widget(text, area);
+            } else if let Some(ref mv) = app.pad_move {
+                transfer::render_pad_move_overlay(frame, area, mv);
             } else if let Some(ref ul) = app.pad_upload {
                 transfer::render_pad_upload_overlay(frame, area, ul);
             } else if let Some(ref dl) = app.pad_download {
@@ -206,6 +208,7 @@ fn render_status(frame: &mut Frame, area: Rect, app: &App) {
     let mut spans = vec![Span::raw(" ")];
 
     let view_label = match app.main_view {
+        MainView::Pads if app.move_selection.is_some() => "Move",
         MainView::Pads if app.detail_form.is_some() => "Edit",
         MainView::Pads => "Pads",
         MainView::Monitor => "Monitor",
@@ -216,6 +219,31 @@ fn render_status(frame: &mut Frame, area: Rect, app: &App) {
         format!("[{view_label}] "),
         Style::default().fg(Color::Cyan),
     ));
+
+    if app.move_selection.is_some() {
+        spans.extend([
+            Span::styled(
+                "\u{2192}\u{2191}\u{2193} ",
+                Style::default().fg(Color::Yellow),
+            ),
+            Span::raw("pick empty slot  "),
+            Span::styled("\u{23CE} ", Style::default().fg(Color::Yellow)),
+            Span::raw("confirm  "),
+            Span::styled("Esc ", Style::default().fg(Color::Yellow)),
+            Span::raw("cancel  "),
+            Span::styled(
+                format!("\u{2502} {} ", app.status),
+                Style::default().fg(Color::DarkGray),
+            ),
+        ]);
+        let status = Paragraph::new(Line::from(spans)).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Cyan)),
+        );
+        frame.render_widget(status, area);
+        return;
+    }
 
     match app.main_view {
         MainView::Pads => {
