@@ -103,6 +103,7 @@ Commands:
 - `rcp2-cli fader mute <N> [on|off|toggle]` - mute a fader (0-based index)
 - `rcp2-cli fader listen <N> [on|off|toggle]` - toggle the Listen button for a fader
 - `rcp2-cli pad trigger <BANK> <PAD> [--hold <MS>] [--no-restore]` - trigger a soundpad (0-based bank/pad; restores the previous bank unless `--no-restore`)
+- `rcp2-cli pad bank [BANK] [--json]` - switch the device to a pad bank and leave it selected (0-based); omit BANK to print the current bank
 
 Global flags: `-v`/`-vv` for verbosity and `--dry-run` (log writes instead of sending them).
 
