@@ -12,19 +12,19 @@ impl PacketSerialize for ChildRemovedPacket {
         super::child_added::write_compressed_int(
             &mut bytes,
             i64::try_from(self.path.len())
-                .map_err(|_| crate::Error::Parse("path length overflow".into()))?,
+                .map_err(|_| crate::Error::Protocol("path length overflow".into()))?,
         );
         for &idx in &self.path {
             super::child_added::write_compressed_int(
                 &mut bytes,
                 i64::try_from(idx)
-                    .map_err(|_| crate::Error::Parse("path index overflow".into()))?,
+                    .map_err(|_| crate::Error::Protocol("path index overflow".into()))?,
             );
         }
         super::child_added::write_compressed_int(
             &mut bytes,
             i64::try_from(self.child_index)
-                .map_err(|_| crate::Error::Parse("child index overflow".into()))?,
+                .map_err(|_| crate::Error::Protocol("child index overflow".into()))?,
         );
 
         Ok(bytes)

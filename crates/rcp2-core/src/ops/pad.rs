@@ -169,7 +169,7 @@ pub fn create_pad_node(
     Ok(())
 }
 
-const MAX_AUDIO_FILE_SIZE: u64 = 500 * 1024 * 1024;
+const MAX_AUDIO_FILE_SIZE: u64 = 100 * 1024 * 1024;
 
 /// Validates that the path points to a supported audio file.
 ///
@@ -185,7 +185,7 @@ pub fn validate_audio_file(path: &str) -> Result<String, String> {
         return Err("file is empty".into());
     }
     if size > MAX_AUDIO_FILE_SIZE {
-        return Err(format!("file too large ({size} bytes, max 500 MB)"));
+        return Err(format!("file too large ({size} bytes, max 100 MB)"));
     }
     let ext = p
         .extension()

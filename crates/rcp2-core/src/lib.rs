@@ -90,13 +90,6 @@ pub struct StorageInfo {
     pub free_bytes: u64,
 }
 
-impl StorageInfo {
-    #[must_use]
-    pub fn is_available(&self) -> bool {
-        self.present
-    }
-}
-
 #[derive(Debug, Clone, Default)]
 pub struct ShowInfo {
     pub name: String,

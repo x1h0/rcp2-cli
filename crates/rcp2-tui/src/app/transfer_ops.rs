@@ -1,6 +1,6 @@
 use super::App;
 use crate::transfer::{PadDownload, PadDownloadState, PadDownloadStatus, PadUploadState};
-use rcp2_core::ops::TRANSFER_MODE_SD;
+use rcp2_core::ops::{TRANSFER_MODE_EMMC, TRANSFER_MODE_SD};
 use rcp2_core::ops::pad as pad_ops;
 
 impl App {
@@ -162,7 +162,7 @@ impl App {
             dl.save_path = dl.prompt.input.clone();
             dl.state = PadDownloadState::Activating;
             self.status = "activating transfer mode...".into();
-            self.activate_transfer_mode(2);
+            self.activate_transfer_mode(TRANSFER_MODE_EMMC);
         }
     }
 
@@ -196,14 +196,14 @@ impl App {
     pub fn confirm_pad_upload(&mut self) {
         if let Some(ref mut ul) = self.pad_upload {
             let path = ul.prompt.input.clone();
-            if !std::path::Path::new(&path).exists() {
-                self.status = format!("file not found: {path}");
+            if let Err(e) = pad_ops::validate_audio_file(&path) {
+                self.status = e;
                 return;
             }
             ul.source_path = path;
             ul.state = PadUploadState::Activating;
             self.status = "activating transfer mode for upload...".into();
-            self.activate_transfer_mode(2);
+            self.activate_transfer_mode(TRANSFER_MODE_EMMC);
         }
     }
 

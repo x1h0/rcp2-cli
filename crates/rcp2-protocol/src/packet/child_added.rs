@@ -14,21 +14,21 @@ impl PacketSerialize for ChildAddedPacket {
         write_compressed_int(
             &mut bytes,
             i64::try_from(self.path.len())
-                .map_err(|_| crate::Error::Parse("path length overflow".into()))?,
+                .map_err(|_| crate::Error::Protocol("path length overflow".into()))?,
         );
 
         for &idx in &self.path {
             write_compressed_int(
                 &mut bytes,
                 i64::try_from(idx)
-                    .map_err(|_| crate::Error::Parse("path index overflow".into()))?,
+                    .map_err(|_| crate::Error::Protocol("path index overflow".into()))?,
             );
         }
 
         write_compressed_int(
             &mut bytes,
             i64::try_from(self.insert_index)
-                .map_err(|_| crate::Error::Parse("insert index overflow".into()))?,
+                .map_err(|_| crate::Error::Protocol("insert index overflow".into()))?,
         );
 
         write_c_string(&mut bytes, &self.node_name);

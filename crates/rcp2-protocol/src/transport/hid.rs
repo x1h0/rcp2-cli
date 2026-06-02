@@ -4,7 +4,6 @@ use hidapi::{HidApi, HidDevice};
 use log::{debug, trace};
 
 const REPORT_ID_SEND: u8 = 0x03;
-const REPORT_ID_RECV: u8 = 0x04;
 const REPORT_SIZE: usize = 256;
 
 pub const VENDOR_ID: u16 = 0x19f7;
@@ -151,7 +150,6 @@ impl Transport for HidTransport {
 
     fn recv(&mut self) -> crate::Result<Vec<u8>> {
         let mut buf = [0u8; REPORT_SIZE];
-        buf[0] = REPORT_ID_RECV;
         let n = self
             .device
             .read_timeout(&mut buf, 100)

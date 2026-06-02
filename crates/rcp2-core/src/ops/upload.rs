@@ -42,13 +42,11 @@ impl PadUpload {
         child_index: usize,
         pad_idx: usize,
         source_path: &str,
-        env_start: Option<f64>,
-        env_stop: Option<f64>,
+        ext: &str,
+        env: (Option<f64>, Option<f64>),
     ) -> Self {
-        let ext = std::path::Path::new(source_path)
-            .extension()
-            .map_or_else(|| "wav".into(), |e| e.to_string_lossy().to_lowercase());
-        let new_file_path = pad_ops::device_pad_path(pad_idx, &ext);
+        let (env_start, env_stop) = env;
+        let new_file_path = pad_ops::device_pad_path(pad_idx, ext);
 
         if let Err(e) = pad_ops::send_property(
             conn,

@@ -2,6 +2,7 @@ use super::{App, ConfirmAction, ConfirmDialog};
 use crate::detail_form::{DetailForm, FieldKind};
 use crate::transfer::{PadUpload, PadUploadStatus};
 use log::info;
+use rcp2_core::ops::TRANSFER_MODE_EMMC;
 use rcp2_core::ops::pad as pad_ops;
 use rcp2_protocol::types::Value;
 
@@ -353,6 +354,13 @@ impl App {
         if !self.require_no_active_download() {
             return;
         }
+        let ext = match pad_ops::validate_audio_file(path) {
+            Ok(ext) => ext,
+            Err(e) => {
+                self.status = e;
+                return;
+            }
+        };
         let Some(pad) = self.selected_pad_info() else {
             return;
         };
@@ -373,12 +381,12 @@ impl App {
             pad.child_index,
             pad.idx,
             path,
-            env_start_norm,
-            env_stop_norm,
+            &ext,
+            (env_start_norm, env_stop_norm),
         );
         self.pad_upload = Some(upload);
         self.detail_form = None;
-        self.activate_transfer_mode(2);
+        self.activate_transfer_mode(TRANSFER_MODE_EMMC);
         self.status = "uploading sound...".into();
     }
 
@@ -424,6 +432,10 @@ impl App {
         };
 
         let sound_file = form.picked_file_path.clone().unwrap_or_default();
+        if let Err(e) = pad_ops::validate_audio_file(&sound_file) {
+            self.status = e;
+            return;
+        }
 
         let form_name = form
             .fields
@@ -465,7 +477,7 @@ impl App {
 
         let upload = PadUpload::start_new(pad_idx, sound_file, pad_name, env_start, env_stop);
         self.pad_upload = Some(upload);
-        self.activate_transfer_mode(2);
+        self.activate_transfer_mode(TRANSFER_MODE_EMMC);
         self.status = "uploading sound...".into();
     }
 
