@@ -15,13 +15,13 @@ pub(super) fn render_monitor(frame: &mut Frame, area: Rect, app: &App) {
         .skip(skip)
         .take(inner_height)
         .map(|entry| {
-            let style = if entry.starts_with("[update]") {
+            let style = if entry.contains("[update]") {
                 Style::default().fg(Color::Gray)
-            } else if entry.starts_with("[state]") {
+            } else if entry.contains("[state]") {
                 Style::default().fg(Color::Green)
-            } else if entry.starts_with("[error]") {
+            } else if entry.contains("[error]") {
                 Style::default().fg(Color::Red)
-            } else if entry.starts_with("[unknown]") {
+            } else if entry.contains("[unknown]") {
                 Style::default().fg(Color::Yellow)
             } else {
                 Style::default().fg(Color::DarkGray)

@@ -70,6 +70,7 @@ pub struct App {
     pub confirm_dialog: Option<ConfirmDialog>,
     pub(super) rec_started_at: Option<Instant>,
     pub(super) rec_paused_elapsed: u64,
+    pub(super) log_start: Instant,
 }
 
 impl App {
@@ -119,6 +120,7 @@ impl App {
             confirm_dialog: None,
             rec_started_at: None,
             rec_paused_elapsed: 0,
+            log_start: Instant::now(),
         })
     }
 
@@ -132,7 +134,7 @@ impl App {
                     value,
                 } => {
                     changed = true;
-                    self.push_log(format!("[update] {indices:?} {name} = {value:?}"));
+                    self.push_log(&format!("[update] {indices:?} {name} = {value:?}"));
 
                     if self.modal == ModalState::WaitingForPadPress
                         && name == "padButtonPressed"
@@ -156,10 +158,10 @@ impl App {
                 DeviceEvent::StateInitialized => {
                     changed = true;
                     self.status = "state refreshed".into();
-                    self.push_log("[state] full state received".into());
+                    self.push_log("[state] full state received");
                 }
                 DeviceEvent::UnknownPacket(data) => {
-                    self.push_log(format!(
+                    self.push_log(&format!(
                         "[unknown] {} bytes: {:02x?}",
                         data.len(),
                         &data[..data.len().min(32)]
@@ -171,13 +173,13 @@ impl App {
                 DeviceEvent::Disconnected => {
                     self.connected = false;
                     self.status = "disconnected".into();
-                    self.push_log("[disconnected]".into());
+                    self.push_log("[disconnected]");
                     self.rec_started_at = None;
                     self.rec_paused_elapsed = 0;
                 }
                 DeviceEvent::Error(e) => {
                     self.status = format!("error: {e}");
-                    self.push_log(format!("[error] {e}"));
+                    self.push_log(&format!("[error] {e}"));
                 }
             }
         }
@@ -234,11 +236,13 @@ impl App {
         }
     }
 
-    pub(super) fn push_log(&mut self, msg: String) {
+    pub(super) fn push_log(&mut self, msg: &str) {
+        let t = self.log_start.elapsed().as_secs_f64();
+        let entry = format!("[{t:>8.3}] {msg}");
         if self.event_log.len() >= MAX_LOG_ENTRIES {
             self.event_log.pop_front();
         }
-        self.event_log.push_back(msg);
+        self.event_log.push_back(entry);
         self.log_total += 1;
         if self.log_scroll > 0 {
             self.log_scroll += 1;

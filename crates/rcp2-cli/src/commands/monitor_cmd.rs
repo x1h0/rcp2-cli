@@ -1,34 +1,37 @@
 use super::Context;
 use rcp2_protocol::device::DeviceEvent;
+use std::time::Instant;
 
 pub fn monitor(ctx: &Context) -> Result<(), Box<dyn std::error::Error>> {
     let conn = super::open_connection(ctx)?;
     println!("monitoring device events (Ctrl+C to stop)...");
+    let start = Instant::now();
 
     for event in conn.events() {
+        let t = start.elapsed().as_secs_f64();
         match event {
             DeviceEvent::StateInitialized => {
-                println!("[state] full state received");
+                println!("[{t:>8.3}] [state] full state received");
             }
             DeviceEvent::PropertyUpdated {
                 indices,
                 name,
                 value,
             } => {
-                println!("[update] {indices:?} {name} = {value:?}");
+                println!("[{t:>8.3}] [update] {indices:?} {name} = {value:?}");
             }
             DeviceEvent::UnknownPacket(data) => {
                 println!(
-                    "[unknown] {} bytes: {:02x?}",
+                    "[{t:>8.3}] [unknown] {} bytes: {:02x?}",
                     data.len(),
                     &data[..std::cmp::min(32, data.len())]
                 );
             }
             DeviceEvent::Error(e) => {
-                eprintln!("[error] {e}");
+                eprintln!("[{t:>8.3}] [error] {e}");
             }
             DeviceEvent::Disconnected => {
-                println!("[disconnected]");
+                println!("[{t:>8.3}] [disconnected]");
                 break;
             }
         }
