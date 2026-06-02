@@ -24,7 +24,8 @@ Using this tool may freeze your device, require a USB replug to recover, or corr
 - View pad properties for all pad types (Sound, Effect, Special)
 - Edit pad properties: name, color, gain (all types), play mode, loop, replay (Sound pads only)
 - Upload, download, and replace sounds on Sound pads (WAV/MP3)
-- Start, pause, and stop recording from the TUI
+- Start, pause, and stop recording
+- Trigger pads
 - Transfer mode: browse internal storage (eMMC) or SD card, download files and folders
 - Monitor device property updates in real-time
 - Dump full device state tree as JSON
@@ -97,10 +98,11 @@ Commands:
 - `rcp2-cli monitor` - stream property updates in real-time
 - `rcp2-cli record status [--json]` - show recording status
 - `rcp2-cli record interactive` - live recording control (start/pause/stop)
-- `rcp2-cli transfer interactive [--storage emmc|sd]` - browse storage and download files
+- `rcp2-cli transfer interactive [--storage <emmc|sd>]` - browse storage and download files
 - `rcp2-cli fader list [--json]` - list faders with mute/listen state and level
 - `rcp2-cli fader mute <N> [on|off|toggle]` - mute a fader (0-based index)
 - `rcp2-cli fader listen <N> [on|off|toggle]` - toggle the Listen button for a fader
+- `rcp2-cli pad trigger <BANK> <PAD> [--hold <MS>] [--no-restore]` - trigger a soundpad (0-based bank/pad; restores the previous bank unless `--no-restore`)
 
 Global flags: `-v`/`-vv` for verbosity and `--dry-run` (log writes instead of sending them).
 
