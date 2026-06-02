@@ -3,9 +3,17 @@ mod header;
 mod help;
 mod monitor;
 mod pads;
+mod settings;
+mod settings_labels;
 mod strip;
 mod transfer;
 mod util;
+
+pub(crate) use settings::{
+    DraftField, FieldRole, SETTINGS_CATEGORY_COUNT, SettingsNode, SettingsStep,
+    category_draft_fields, cycle_language, cycle_timezone, language_code, language_index,
+    settings_category_is_language, settings_field_role, settings_item_count, settings_live_toggle,
+};
 
 use crate::app::{App, MainView};
 use ratatui::prelude::*;
@@ -201,6 +209,9 @@ fn render_main(frame: &mut Frame, area: Rect, app: &mut App) {
         MainView::Transfer => {
             transfer::render_transfer(frame, area, app);
         }
+        MainView::Settings => {
+            settings::render_settings(frame, area, app);
+        }
     }
 }
 
@@ -213,6 +224,7 @@ fn render_status(frame: &mut Frame, area: Rect, app: &App) {
         MainView::Pads => "Pads",
         MainView::Monitor => "Monitor",
         MainView::Transfer => "Transfer",
+        MainView::Settings => "Settings",
     };
 
     spans.push(Span::styled(
@@ -250,6 +262,8 @@ fn render_status(frame: &mut Frame, area: Rect, app: &App) {
             spans.extend([
                 Span::styled("m ", Style::default().fg(Color::Yellow)),
                 Span::raw("monitor  "),
+                Span::styled("s ", Style::default().fg(Color::Yellow)),
+                Span::raw("settings  "),
             ]);
             if !app.dry_run {
                 spans.extend([
@@ -257,6 +271,16 @@ fn render_status(frame: &mut Frame, area: Rect, app: &App) {
                     Span::raw("transfer  "),
                 ]);
             }
+        }
+        MainView::Settings => {
+            spans.extend([
+                Span::styled("\u{2190}\u{2192} ", Style::default().fg(Color::Yellow)),
+                Span::raw("change  "),
+                Span::styled("\u{23CE} ", Style::default().fg(Color::Yellow)),
+                Span::raw("toggle  "),
+                Span::styled("Esc ", Style::default().fg(Color::Yellow)),
+                Span::raw("back  "),
+            ]);
         }
         MainView::Monitor | MainView::Transfer => {
             spans.extend([

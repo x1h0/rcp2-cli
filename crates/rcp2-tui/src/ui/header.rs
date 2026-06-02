@@ -92,18 +92,18 @@ pub(super) fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         );
     }
 
-    if vm.network.wifi_enabled && !vm.network.wifi_ssid.is_empty() {
+    if vm.network.wifi.enabled && !vm.network.wifi.ssid.is_empty() {
         spans.push(Span::styled(" \u{2502} ", sep));
         spans.push(Span::styled(
-            format!("WiFi: {}", vm.network.wifi_ssid),
+            format!("WiFi: {}", vm.network.wifi.ssid),
             Style::default().fg(Color::Cyan),
         ));
-    } else if vm.network.wired {
+    } else if vm.network.wired.connected {
         spans.push(Span::styled(" \u{2502} ", sep));
         spans.push(Span::styled("ETH", Style::default().fg(Color::Green)));
     }
 
-    if !vm.network.bt_connected.is_empty() {
+    if !vm.network.bluetooth.connected.is_empty() {
         spans.push(Span::styled(" \u{2502} ", sep));
         spans.push(Span::styled("BT", Style::default().fg(Color::Blue)));
     }

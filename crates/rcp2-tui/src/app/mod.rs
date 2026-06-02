@@ -19,6 +19,31 @@ pub enum MainView {
     Pads,
     Monitor,
     Transfer,
+    Settings,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SettingsFocus {
+    Categories,
+    Items,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum BtDisconnect {
+    Idle,
+    Pending,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SerialVisibility {
+    Hidden,
+    Shown,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SettingsDraft {
+    pub lang: Option<usize>,
+    pub timezone: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -63,6 +88,13 @@ pub struct App {
     pub vm: DeviceViewModel,
     pub selected_pad: usize,
     pub detail_scroll: u16,
+    pub settings_selected: usize,
+    pub settings_item: usize,
+    pub settings_focus: SettingsFocus,
+    pub settings_scroll: u16,
+    pub settings_draft: SettingsDraft,
+    pub settings_bt_disconnect: BtDisconnect,
+    pub settings_serial: SerialVisibility,
     pub status: String,
     pub connected: bool,
     pub main_view: MainView,
@@ -120,6 +152,13 @@ impl App {
             vm,
             selected_pad: 0,
             detail_scroll: 0,
+            settings_selected: 0,
+            settings_item: 0,
+            settings_focus: SettingsFocus::Categories,
+            settings_scroll: 0,
+            settings_draft: SettingsDraft::default(),
+            settings_bt_disconnect: BtDisconnect::Idle,
+            settings_serial: SerialVisibility::Hidden,
             status: if dry_run {
                 "connected (dry-run)".into()
             } else {
@@ -212,6 +251,13 @@ impl App {
             self.vm.refresh(&state);
             self.update_rec_timer(prev_state);
             self.refresh_detail_form();
+            if self.settings_bt_disconnect == BtDisconnect::Pending
+                && self.vm.network.bluetooth.connected.is_empty()
+            {
+                self.settings_bt_disconnect = BtDisconnect::Idle;
+                self.settings_focus = SettingsFocus::Categories;
+                self.status = "bluetooth disconnected".into();
+            }
         }
 
         self.poll_pad_download();
@@ -326,8 +372,298 @@ impl App {
         self.detail_form = None;
         self.main_view = match self.main_view {
             MainView::Pads => MainView::Monitor,
-            MainView::Monitor | MainView::Transfer => MainView::Pads,
+            MainView::Monitor | MainView::Transfer | MainView::Settings => MainView::Pads,
         };
+    }
+
+    pub fn enter_settings_view(&mut self) {
+        self.detail_form = None;
+        self.settings_selected = 0;
+        self.settings_item = 0;
+        self.settings_focus = SettingsFocus::Categories;
+        self.settings_scroll = 0;
+        self.settings_draft = SettingsDraft::default();
+        self.settings_bt_disconnect = BtDisconnect::Idle;
+        self.settings_serial = SerialVisibility::Hidden;
+        self.main_view = MainView::Settings;
+    }
+
+    pub fn settings_items_focused(&self) -> bool {
+        self.settings_focus == SettingsFocus::Items
+    }
+
+    fn select_category(&mut self, next: usize) {
+        self.settings_selected = next;
+        self.settings_item = 0;
+        self.settings_scroll = 0;
+    }
+
+    pub fn settings_up(&mut self) {
+        if self.settings_focus == SettingsFocus::Items {
+            self.settings_item = self.settings_item.saturating_sub(1);
+            return;
+        }
+        let count = crate::ui::SETTINGS_CATEGORY_COUNT;
+        self.select_category((self.settings_selected + count - 1) % count);
+    }
+
+    pub fn settings_down(&mut self) {
+        if self.settings_focus == SettingsFocus::Items {
+            let last =
+                crate::ui::settings_item_count(&self.vm, self.settings_selected).saturating_sub(1);
+            self.settings_item = (self.settings_item + 1).min(last);
+            return;
+        }
+        let count = crate::ui::SETTINGS_CATEGORY_COUNT;
+        self.select_category((self.settings_selected + 1) % count);
+    }
+
+    pub fn settings_enter(&mut self) {
+        if self.settings_focus == SettingsFocus::Items {
+            self.settings_activate(crate::ui::SettingsStep::Activate);
+            return;
+        }
+        if crate::ui::settings_item_count(&self.vm, self.settings_selected) > 0 {
+            self.settings_focus = SettingsFocus::Items;
+            self.settings_item = 0;
+        }
+    }
+
+    pub fn settings_left(&mut self) {
+        if self.settings_focus == SettingsFocus::Items {
+            self.settings_activate(crate::ui::SettingsStep::Prev);
+        }
+    }
+
+    pub fn settings_right(&mut self) {
+        if self.settings_focus == SettingsFocus::Items {
+            self.settings_activate(crate::ui::SettingsStep::Next);
+        }
+    }
+
+    pub fn settings_back(&mut self) {
+        if self.settings_focus == SettingsFocus::Items {
+            self.settings_focus = SettingsFocus::Categories;
+        } else {
+            self.toggle_main_view();
+        }
+    }
+
+    fn settings_activate(&mut self, step: crate::ui::SettingsStep) {
+        match crate::ui::settings_field_role(&self.vm, self.settings_selected, self.settings_item) {
+            Some(crate::ui::FieldRole::Live) => self.settings_commit_live(step),
+            Some(crate::ui::FieldRole::Stage(field)) => self.settings_stage(field, step),
+            Some(crate::ui::FieldRole::Apply) => {
+                if matches!(step, crate::ui::SettingsStep::Activate) {
+                    self.settings_apply_draft();
+                }
+            }
+            Some(crate::ui::FieldRole::BtDisconnect) => {
+                if matches!(step, crate::ui::SettingsStep::Activate) {
+                    self.settings_bt_disconnect();
+                }
+            }
+            Some(crate::ui::FieldRole::ToggleSerial) => {
+                if matches!(step, crate::ui::SettingsStep::Activate) {
+                    self.settings_serial = match self.settings_serial {
+                        SerialVisibility::Hidden => SerialVisibility::Shown,
+                        SerialVisibility::Shown => SerialVisibility::Hidden,
+                    };
+                }
+            }
+            Some(crate::ui::FieldRole::CheckUpdate) => {
+                if matches!(step, crate::ui::SettingsStep::Activate) {
+                    self.settings_check_update();
+                }
+            }
+            None => {}
+        }
+    }
+
+    fn settings_check_update(&mut self) {
+        if self.vm.system.update.checking {
+            return;
+        }
+        match rcp2_core::ops::system::set_bool(&self.conn, "updateCheckRequested", true) {
+            Ok(()) => {
+                self.refresh_from_state();
+                self.status = "checking for updates\u{2026}".into();
+            }
+            Err(e) => self.status = format!("update failed: {e}"),
+        }
+    }
+
+    pub(crate) fn serial_revealed(&self) -> bool {
+        self.settings_serial == SerialVisibility::Shown
+    }
+
+    fn settings_bt_disconnect(&mut self) {
+        if self.settings_bt_disconnect == BtDisconnect::Pending {
+            return;
+        }
+        let address = self.vm.network.bluetooth.connected.clone();
+        if address.is_empty() {
+            return;
+        }
+        match rcp2_core::ops::network::disconnect_bluetooth(&self.conn, &address) {
+            Ok(()) => {
+                self.settings_bt_disconnect = BtDisconnect::Pending;
+                self.status = "disconnecting bluetooth\u{2026}".into();
+            }
+            Err(e) => self.status = format!("update failed: {e}"),
+        }
+    }
+
+    pub(crate) fn bt_disconnect_pending(&self) -> bool {
+        self.settings_bt_disconnect == BtDisconnect::Pending
+    }
+
+    fn settings_commit_live(&mut self, step: crate::ui::SettingsStep) {
+        let Some((node, name, value)) = crate::ui::settings_live_toggle(
+            &self.vm,
+            self.settings_selected,
+            self.settings_item,
+            step,
+        ) else {
+            return;
+        };
+        let result = match node {
+            crate::ui::SettingsNode::System => {
+                rcp2_core::ops::system::set_bool(&self.conn, name, value)
+            }
+            crate::ui::SettingsNode::Network => {
+                rcp2_core::ops::network::set_bool(&self.conn, name, value)
+            }
+        };
+        match result {
+            Ok(()) => self.refresh_from_state(),
+            Err(e) => self.status = format!("update failed: {e}"),
+        }
+    }
+
+    fn settings_stage(&mut self, field: crate::ui::DraftField, step: crate::ui::SettingsStep) {
+        use crate::ui::DraftField;
+        match field {
+            DraftField::Lang => {
+                self.settings_draft.lang =
+                    Some(crate::ui::cycle_language(self.resolved_lang_index(), step));
+            }
+            DraftField::Timezone => {
+                self.settings_draft.timezone =
+                    Some(crate::ui::cycle_timezone(self.resolved_tz_index(), step));
+            }
+        }
+    }
+
+    fn settings_apply_draft(&mut self) {
+        let fields = crate::ui::category_draft_fields(self.settings_selected);
+        let mut changed = false;
+        for &field in fields {
+            match self.commit_draft_field(field) {
+                Ok(true) => changed = true,
+                Ok(false) => {}
+                Err(e) => {
+                    self.status = format!("update failed: {e}");
+                    return;
+                }
+            }
+        }
+        self.clear_category_draft();
+        if changed {
+            self.refresh_from_state();
+            self.status = if crate::ui::settings_category_is_language(self.settings_selected) {
+                "language change sent \u{2014} this may take a moment".into()
+            } else {
+                "settings applied".into()
+            };
+        }
+    }
+
+    fn commit_draft_field(&self, field: crate::ui::DraftField) -> rcp2_protocol::Result<bool> {
+        use crate::ui::DraftField;
+        match field {
+            DraftField::Timezone => {
+                let Some(index) = self.settings_draft.timezone else {
+                    return Ok(false);
+                };
+                if index == self.vm.system.clock.timezone_index as usize {
+                    return Ok(false);
+                }
+                rcp2_core::ops::system::set_u32(
+                    &self.conn,
+                    "systemDateTimezone",
+                    u32::try_from(index).unwrap_or(0),
+                )?;
+                Ok(true)
+            }
+            DraftField::Lang => {
+                let Some(index) = self.settings_draft.lang else {
+                    return Ok(false);
+                };
+                let code = crate::ui::language_code(index);
+                if code == self.vm.system.language {
+                    return Ok(false);
+                }
+                rcp2_core::ops::gui::set_string(&self.conn, "lang", code)?;
+                Ok(true)
+            }
+        }
+    }
+
+    fn clear_category_draft(&mut self) {
+        use crate::ui::DraftField;
+        for &field in crate::ui::category_draft_fields(self.settings_selected) {
+            match field {
+                DraftField::Lang => self.settings_draft.lang = None,
+                DraftField::Timezone => self.settings_draft.timezone = None,
+            }
+        }
+    }
+
+    fn refresh_from_state(&mut self) {
+        if let Ok(state) = self.conn.state().snapshot() {
+            self.vm.refresh(&state);
+        }
+    }
+
+    pub(crate) fn resolved_lang_index(&self) -> usize {
+        self.settings_draft
+            .lang
+            .unwrap_or_else(|| crate::ui::language_index(&self.vm.system.language))
+    }
+
+    pub(crate) fn resolved_tz_index(&self) -> usize {
+        self.settings_draft
+            .timezone
+            .unwrap_or(self.vm.system.clock.timezone_index as usize)
+    }
+
+    pub(crate) fn settings_category_dirty(&self) -> bool {
+        crate::ui::category_draft_fields(self.settings_selected)
+            .iter()
+            .any(|&field| self.draft_field_dirty(field))
+    }
+
+    fn draft_field_dirty(&self, field: crate::ui::DraftField) -> bool {
+        use crate::ui::DraftField;
+        match field {
+            DraftField::Lang => self
+                .settings_draft
+                .lang
+                .is_some_and(|i| crate::ui::language_code(i) != self.vm.system.language),
+            DraftField::Timezone => self
+                .settings_draft
+                .timezone
+                .is_some_and(|i| i != self.vm.system.clock.timezone_index as usize),
+        }
+    }
+
+    pub fn settings_scroll_up(&mut self) {
+        self.settings_scroll = self.settings_scroll.saturating_sub(1);
+    }
+
+    pub fn settings_scroll_down(&mut self) {
+        self.settings_scroll = self.settings_scroll.saturating_add(1);
     }
 
     pub(super) fn require_transfer_tools(&mut self) -> bool {

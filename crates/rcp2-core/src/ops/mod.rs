@@ -6,9 +6,13 @@ pub mod pad;
 pub mod transfer;
 pub mod upload;
 
+pub mod gui;
+pub mod network;
 pub mod recorder;
+pub mod system;
 
 pub const SYSTEM_IDX: usize = 13;
+pub const NETWORK_IDX: usize = 14;
 pub const GUI_IDX: usize = 5;
 pub const RECORDER_IDX: usize = 2;
 pub const DEVICE_PAD_PREFIX: &str = "/Application/emmc-data/pads/";

@@ -19,6 +19,7 @@ pub struct DeviceViewModel {
     pub show: ShowInfo,
     pub system: SystemInfo,
     pub network: NetworkInfo,
+    pub build: BuildInfo,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -101,14 +102,72 @@ pub struct SystemInfo {
     pub firmware: String,
     pub serial: String,
     pub name: String,
+    pub language: String,
+    pub midi_control: bool,
+    pub clock: ClockInfo,
+    pub analytics: AnalyticsInfo,
+    pub update: UpdateInfo,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct UpdateInfo {
+    pub checking: bool,
+    pub available: bool,
+    pub no_internet: bool,
+    pub version: String,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ClockInfo {
+    pub format_24h: bool,
+    pub daylight_savings: bool,
+    pub on_home: bool,
+    pub timezone_index: u32,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct AnalyticsInfo {
+    pub share_anom: bool,
+    pub share_resource: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct BuildInfo {
+    pub mixer_version: String,
+    pub gui_version: String,
+    pub callme_version: String,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct NetworkInfo {
-    pub wifi_enabled: bool,
-    pub wifi_ssid: String,
-    pub wired: bool,
-    pub bt_connected: String,
+    pub wired: WiredInfo,
+    pub wifi: WifiInfo,
+    pub bluetooth: BluetoothInfo,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct WiredInfo {
+    pub connected: bool,
+    pub ip_address: String,
+    pub gateway: String,
+    pub subnet_mask: String,
+    pub primary_dns: String,
+    pub secondary_dns: String,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct WifiInfo {
+    pub enabled: bool,
+    pub ssid: String,
+    pub ip: String,
+    pub dhcp: bool,
+    pub static_ip_set: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct BluetoothInfo {
+    pub visible: bool,
+    pub connected: String,
 }
 
 impl DeviceViewModel {
@@ -139,6 +198,7 @@ impl DeviceViewModel {
         let show = extract_show(state);
         let system = extract_system(state);
         let network = extract_network(state);
+        let build = extract_build(state);
 
         DeviceViewModel {
             profile,
@@ -153,6 +213,7 @@ impl DeviceViewModel {
             show,
             system,
             network,
+            build,
         }
     }
 
@@ -303,11 +364,42 @@ fn extract_show(state: &Structured) -> ShowInfo {
 }
 
 fn extract_system(state: &Structured) -> SystemInfo {
+    let language = find_node(state, "GUI")
+        .map(|g| get_string(g, "lang"))
+        .unwrap_or_default();
     find_node(state, "SYSTEM")
         .map(|s| SystemInfo {
             firmware: get_string(s, "systemFirmwareVersion"),
             serial: get_string(s, "systemSerialNumber"),
             name: get_string(s, "systemName"),
+            language,
+            midi_control: get_bool(s, "systemMidiControl"),
+            clock: ClockInfo {
+                format_24h: get_bool(s, "systemDateTime24h"),
+                daylight_savings: get_bool(s, "systemDateTimeDaylightSavings"),
+                on_home: get_bool(s, "systemDateTimeOnHome"),
+                timezone_index: get_u32(s, "systemDateTimezone"),
+            },
+            analytics: AnalyticsInfo {
+                share_anom: get_bool(s, "shareAnom"),
+                share_resource: get_bool(s, "shareResource"),
+            },
+            update: UpdateInfo {
+                checking: get_bool(s, "updateChecking"),
+                available: get_bool(s, "osUpdateAvailable") || get_bool(s, "appUpdateAvailable"),
+                no_internet: get_bool(s, "updateNoInternet"),
+                version: get_string(s, "updateVersion"),
+            },
+        })
+        .unwrap_or_default()
+}
+
+fn extract_build(state: &Structured) -> BuildInfo {
+    find_node(state, "BUILD")
+        .map(|b| BuildInfo {
+            mixer_version: get_string(b, "buildMixerVersion"),
+            gui_version: get_string(b, "buildGuiVersion"),
+            callme_version: get_string(b, "buildCallMeVersion"),
         })
         .unwrap_or_default()
 }
@@ -315,10 +407,25 @@ fn extract_system(state: &Structured) -> SystemInfo {
 fn extract_network(state: &Structured) -> NetworkInfo {
     find_node(state, "NETWORK")
         .map(|n| NetworkInfo {
-            wifi_enabled: get_bool(n, "wifi"),
-            wifi_ssid: get_string(n, "wifiSSID"),
-            wired: get_bool(n, "wiredConnected"),
-            bt_connected: get_string(n, "btConnectedAddress"),
+            wired: WiredInfo {
+                connected: get_bool(n, "wiredConnected"),
+                ip_address: get_string(n, "ipAddress"),
+                gateway: get_string(n, "gateway"),
+                subnet_mask: get_string(n, "subnetMask"),
+                primary_dns: get_string(n, "primaryDns"),
+                secondary_dns: get_string(n, "secondaryDns"),
+            },
+            wifi: WifiInfo {
+                enabled: get_bool(n, "wifi"),
+                ssid: get_string(n, "wifiSSID"),
+                ip: get_string(n, "wifiIpAddress"),
+                dhcp: get_bool(n, "wifiDHCP"),
+                static_ip_set: get_bool(n, "staticIpSet"),
+            },
+            bluetooth: BluetoothInfo {
+                visible: get_bool(n, "btVisible"),
+                connected: get_string(n, "btConnectedAddress"),
+            },
         })
         .unwrap_or_default()
 }

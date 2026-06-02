@@ -335,25 +335,35 @@ fn handle_global_key(app: &mut App, code: KeyCode) -> bool {
         KeyCode::Esc => match app.main_view {
             MainView::Transfer => app.transfer_cancel(),
             MainView::Monitor => app.toggle_main_view(),
+            MainView::Settings => app.settings_back(),
             MainView::Pads => {}
         },
         KeyCode::Char('t') if app.main_view == MainView::Pads => app.enter_transfer_view(),
         KeyCode::Char('m') if app.main_view != MainView::Transfer => app.toggle_main_view(),
+        KeyCode::Char('s') if app.main_view == MainView::Pads => app.enter_settings_view(),
         KeyCode::Char('s') if app.main_view == MainView::Monitor => {
             if let Err(e) = app.save_log() {
                 app.status = format!("save failed: {e}");
             }
         }
-        KeyCode::Left | KeyCode::Char('h') => app.prev_bank(),
-        KeyCode::Right | KeyCode::Char('l') => app.next_bank(),
+        KeyCode::Left | KeyCode::Char('h') if app.main_view == MainView::Pads => app.prev_bank(),
+        KeyCode::Right | KeyCode::Char('l') if app.main_view == MainView::Pads => app.next_bank(),
+        KeyCode::Left | KeyCode::Char('h') if app.main_view == MainView::Settings => {
+            app.settings_left();
+        }
+        KeyCode::Right | KeyCode::Char('l') if app.main_view == MainView::Settings => {
+            app.settings_right();
+        }
         KeyCode::Up | KeyCode::Char('k') => match app.main_view {
             MainView::Monitor => app.scroll_log_up(),
             MainView::Transfer => app.transfer_select_up(),
+            MainView::Settings => app.settings_up(),
             MainView::Pads => app.prev_pad(),
         },
         KeyCode::Down | KeyCode::Char('j') => match app.main_view {
             MainView::Monitor => app.scroll_log_down(),
             MainView::Transfer => app.transfer_select_down(),
+            MainView::Settings => app.settings_down(),
             MainView::Pads => app.next_pad(),
         },
         KeyCode::Char(c @ '1'..='8') if app.main_view == MainView::Pads => {
@@ -361,6 +371,8 @@ fn handle_global_key(app: &mut App, code: KeyCode) -> bool {
         }
         KeyCode::PageUp if app.main_view == MainView::Pads => app.detail_scroll_up(),
         KeyCode::PageDown if app.main_view == MainView::Pads => app.detail_scroll_down(),
+        KeyCode::PageUp if app.main_view == MainView::Settings => app.settings_scroll_up(),
+        KeyCode::PageDown if app.main_view == MainView::Settings => app.settings_scroll_down(),
         KeyCode::Char('r') => app.toggle_recording(),
         KeyCode::Char('R') => app.stop_recording(),
         KeyCode::Char('p') if app.main_view == MainView::Pads => {
@@ -371,6 +383,9 @@ fn handle_global_key(app: &mut App, code: KeyCode) -> bool {
         }
         KeyCode::Enter if app.main_view == MainView::Transfer => {
             app.transfer_enter();
+        }
+        KeyCode::Enter if app.main_view == MainView::Settings => {
+            app.settings_enter();
         }
         KeyCode::Char('d') if app.main_view == MainView::Transfer => {
             app.transfer_download_selected();
