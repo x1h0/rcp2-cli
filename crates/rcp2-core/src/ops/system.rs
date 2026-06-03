@@ -1,4 +1,3 @@
-use super::SYSTEM_IDX;
 use log::warn;
 use rcp2_protocol::device::DeviceConnection;
 use rcp2_protocol::types::Value;
@@ -20,8 +19,9 @@ pub fn set_u32(conn: &DeviceConnection, name: &str, value: u32) -> rcp2_protocol
 }
 
 fn set_value(conn: &DeviceConnection, name: &str, value: Value) -> rcp2_protocol::Result<()> {
-    conn.send_property_update(vec![SYSTEM_IDX], name.into(), value.clone())?;
-    if let Err(e) = conn.state().set_property(&[SYSTEM_IDX], name, value) {
+    let system_idx = conn.state().root_child_index("SYSTEM")?;
+    conn.send_property_update(vec![system_idx], name.into(), value.clone())?;
+    if let Err(e) = conn.state().set_property(&[system_idx], name, value) {
         warn!("failed to update local state: {e}");
     }
     Ok(())

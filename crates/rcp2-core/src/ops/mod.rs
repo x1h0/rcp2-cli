@@ -11,10 +11,6 @@ pub mod network;
 pub mod recorder;
 pub mod system;
 
-pub const SYSTEM_IDX: usize = 13;
-pub const NETWORK_IDX: usize = 14;
-pub const GUI_IDX: usize = 5;
-pub const RECORDER_IDX: usize = 2;
 pub const DEVICE_PAD_PREFIX: &str = "/Application/emmc-data/pads/";
 pub const TRANSFER_MODE_EMMC: u32 = 2;
 pub const TRANSFER_MODE_SD: u32 = 1;

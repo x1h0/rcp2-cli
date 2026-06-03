@@ -320,7 +320,7 @@ impl TransferState {
 
     pub fn find_mount_point(&mut self) -> bool {
         let output = Command::new("lsblk")
-            .args(["-J", "-o", "NAME,MOUNTPOINT,VENDOR,MODEL,SIZE,FSTYPE"])
+            .args(["-J", "-o", "NAME,MOUNTPOINT,VENDOR,MODEL,SIZE,FSTYPE,LABEL"])
             .output();
 
         let Ok(output) = output else {
@@ -347,7 +347,6 @@ impl TransferState {
     fn is_rodecaster_device(dev: &serde_json::Value) -> bool {
         let vendor = dev["vendor"].as_str().unwrap_or("");
         let model = dev["model"].as_str().unwrap_or("");
-        let mp = dev["mountpoint"].as_str().unwrap_or("");
 
         if vendor.contains("RODE") || model.contains("RODE") || model.contains("Rodecaster") {
             return true;
@@ -357,21 +356,20 @@ impl TransferState {
             return true;
         }
 
-        if model.contains("MassStorageClass") {
-            if mp.contains("RodeCaster") || mp.contains("rodecaster") {
-                return true;
-            }
-            if let Some(children) = dev["children"].as_array() {
-                for child in children {
-                    let cmp = child["mountpoint"].as_str().unwrap_or("");
-                    if cmp.contains("RodeCaster") || cmp.contains("rodecaster") {
-                        return true;
-                    }
-                }
-            }
-        }
+        // SD card shows up as a generic MassStorageClass device; match the RodeCaster label.
+        Self::label_or_mount_matches(dev) || Self::children_match(dev)
+    }
 
-        false
+    fn label_or_mount_matches(node: &serde_json::Value) -> bool {
+        let label = node["label"].as_str().unwrap_or("").to_lowercase();
+        let mp = node["mountpoint"].as_str().unwrap_or("").to_lowercase();
+        label.contains("rodecaster") || mp.contains("rodecaster")
+    }
+
+    fn children_match(dev: &serde_json::Value) -> bool {
+        dev["children"]
+            .as_array()
+            .is_some_and(|children| children.iter().any(Self::label_or_mount_matches))
     }
 
     fn check_device_mount(dev: &serde_json::Value) -> Option<String> {
@@ -402,7 +400,7 @@ impl TransferState {
 
     fn try_udisks_mount(&mut self) -> bool {
         let output = Command::new("lsblk")
-            .args(["-J", "-o", "NAME,VENDOR,MODEL,MOUNTPOINT"])
+            .args(["-J", "-o", "NAME,VENDOR,MODEL,MOUNTPOINT,FSTYPE,LABEL"])
             .output();
 
         let Ok(output) = output else { return false };
@@ -417,21 +415,12 @@ impl TransferState {
 
         for dev in devices {
             if !Self::is_rodecaster_device(dev) {
-                let model = dev["model"].as_str().unwrap_or("");
-                if !model.contains("MassStorageClass") {
-                    continue;
-                }
+                continue;
             }
 
-            let name = dev["name"].as_str().unwrap_or("");
-            let dev_path = if let Some(children) = dev["children"].as_array() {
-                if let Some(child) = children.first() {
-                    format!("/dev/{}", child["name"].as_str().unwrap_or(name))
-                } else {
-                    format!("/dev/{name}")
-                }
-            } else {
-                format!("/dev/{name}")
+            // Skip the inactive 0-byte gadget (eMMC LUN in SD mode); mounting it blocks.
+            let Some(dev_path) = Self::mountable_block_path(dev) else {
+                continue;
             };
 
             info!("attempting udisksctl mount for {dev_path}");
@@ -450,6 +439,20 @@ impl TransferState {
             }
         }
         false
+    }
+
+    fn mountable_block_path(dev: &serde_json::Value) -> Option<String> {
+        if let Some(children) = dev["children"].as_array() {
+            for child in children {
+                if !child["fstype"].as_str().unwrap_or("").is_empty() {
+                    return Some(format!("/dev/{}", child["name"].as_str()?));
+                }
+            }
+        }
+        if !dev["fstype"].as_str().unwrap_or("").is_empty() {
+            return Some(format!("/dev/{}", dev["name"].as_str()?));
+        }
+        None
     }
 
     pub fn refresh_files(&mut self) {

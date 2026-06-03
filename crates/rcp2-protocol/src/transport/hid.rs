@@ -11,9 +11,8 @@ pub const VENDOR_ID: u16 = 0x19f7;
 pub const PRODUCT_IDS_PRO_II: &[u16] = &[0x0030, 0x0037, 0x0072, 0x0078, 0x0094, 0x0092];
 pub const PRODUCT_IDS_PRO_II_SECONDARY: &[u16] = &[0x0026];
 
-// TODO(duo): add more PIDs if multitrack configs produce different ones
-pub const PRODUCT_IDS_DUO: &[u16] = &[0x0050];
-pub const PRODUCT_IDS_DUO_SECONDARY: &[u16] = &[];
+pub const PRODUCT_IDS_DUO: &[u16] = &[0x0050, 0x0079, 0x0093, 0x0095];
+pub const PRODUCT_IDS_DUO_SECONDARY: &[u16] = &[0x004e];
 
 pub const HID_INTERFACE: i32 = 9;
 

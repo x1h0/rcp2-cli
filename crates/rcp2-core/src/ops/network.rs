@@ -1,4 +1,3 @@
-use super::NETWORK_IDX;
 use log::warn;
 use rcp2_protocol::device::DeviceConnection;
 use rcp2_protocol::types::Value;
@@ -8,10 +7,11 @@ use rcp2_protocol::types::Value;
 /// # Errors
 /// Returns an error if sending the property update fails.
 pub fn set_bool(conn: &DeviceConnection, name: &str, value: bool) -> rcp2_protocol::Result<()> {
-    conn.send_property_update(vec![NETWORK_IDX], name.into(), Value::Bool(value))?;
+    let network_idx = conn.state().root_child_index("NETWORK")?;
+    conn.send_property_update(vec![network_idx], name.into(), Value::Bool(value))?;
     if let Err(e) = conn
         .state()
-        .set_property(&[NETWORK_IDX], name, Value::Bool(value))
+        .set_property(&[network_idx], name, Value::Bool(value))
     {
         warn!("failed to update local state: {e}");
     }
@@ -24,8 +24,9 @@ pub fn set_bool(conn: &DeviceConnection, name: &str, value: bool) -> rcp2_protoc
 /// # Errors
 /// Returns an error if sending the disconnect request fails.
 pub fn disconnect_bluetooth(conn: &DeviceConnection, address: &str) -> rcp2_protocol::Result<()> {
+    let network_idx = conn.state().root_child_index("NETWORK")?;
     conn.send_property_update(
-        vec![NETWORK_IDX],
+        vec![network_idx],
         "btDoDisconnect".into(),
         Value::String(address.to_string()),
     )

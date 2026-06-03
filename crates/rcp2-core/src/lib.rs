@@ -191,7 +191,7 @@ impl DeviceViewModel {
             .unwrap_or_default();
 
         let faders = extract_faders(state, profile);
-        let pots = extract_pots(state);
+        let pots = extract_pots(state, profile);
         let channels = extract_channels(state);
         let recorder = extract_recorder(state);
         let storage = extract_storage(state);
@@ -289,12 +289,14 @@ fn parse_mix_level(node: &Structured) -> f64 {
         .clamp(0.0, 1.0)
 }
 
-fn extract_pots(state: &Structured) -> Vec<u32> {
+// The firmware always exposes four POT nodes; only the first physical_pots are real knobs.
+fn extract_pots(state: &Structured, profile: &DeviceProfile) -> Vec<u32> {
     find_node(state, "PHYSICALINTERFACE")
         .map(|pi| {
             pi.children
                 .iter()
                 .filter(|c| c.name == "POT")
+                .take(profile.physical_pots)
                 .map(|c| get_u32(c, "potLevel"))
                 .collect()
         })

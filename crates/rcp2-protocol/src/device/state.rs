@@ -63,6 +63,20 @@ impl DeviceState {
         guard.set_property(indices, property_name, value)
     }
 
+    /// Returns the index of a top-level child node by name. Node ordering differs
+    /// between device models, so absolute indices must be resolved at runtime.
+    ///
+    /// # Errors
+    /// Returns an error if the lock is poisoned or no such node exists.
+    pub fn root_child_index(&self, name: &str) -> crate::Result<usize> {
+        let guard = self.lock()?;
+        guard
+            .children
+            .iter()
+            .position(|c| c.name == name)
+            .ok_or_else(|| crate::Error::State(format!("root node '{name}' not found")))
+    }
+
     /// Returns whether the state tree has been populated.
     ///
     /// # Errors

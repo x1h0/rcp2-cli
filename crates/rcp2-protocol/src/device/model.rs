@@ -11,6 +11,7 @@ pub struct DeviceProfile {
     pub display_name: &'static str,
     pub physical_faders: usize,
     pub virtual_faders: usize,
+    pub physical_pots: usize,
     pub pads_per_bank: usize,
     pub pad_rows: usize,
     pub pad_cols: usize,
@@ -21,7 +22,6 @@ pub struct DeviceProfile {
 
 static PRO_II_PHYSICAL_ORDER: [usize; 8] = [0, 4, 1, 5, 2, 6, 3, 7];
 
-// TODO(duo): verify physical pad layout with real hardware
 static DUO_PHYSICAL_ORDER: [usize; 6] = [0, 3, 1, 4, 2, 5];
 
 pub static PRO_II: DeviceProfile = DeviceProfile {
@@ -29,6 +29,7 @@ pub static PRO_II: DeviceProfile = DeviceProfile {
     display_name: "R\u{00D8}DECaster Pro II",
     physical_faders: 6,
     virtual_faders: 3,
+    physical_pots: 4,
     pads_per_bank: 8,
     pad_rows: 4,
     pad_cols: 2,
@@ -42,12 +43,12 @@ pub static DUO: DeviceProfile = DeviceProfile {
     display_name: "R\u{00D8}DECaster Duo",
     physical_faders: 4,
     virtual_faders: 5,
+    physical_pots: 2,
     pads_per_bank: 6,
     pad_rows: 3,
     pad_cols: 2,
     max_banks: 8,
     physical_order: &DUO_PHYSICAL_ORDER,
-    // TODO(duo): verify with real hardware
     padbutton_offset: 35,
 };
 

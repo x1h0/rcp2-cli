@@ -1,4 +1,3 @@
-use super::GUI_IDX;
 use log::warn;
 use rcp2_protocol::device::DeviceConnection;
 use rcp2_protocol::types::Value;
@@ -8,9 +7,10 @@ use rcp2_protocol::types::Value;
 /// # Errors
 /// Returns an error if sending the property update fails.
 pub fn set_string(conn: &DeviceConnection, name: &str, value: &str) -> rcp2_protocol::Result<()> {
+    let gui_idx = conn.state().root_child_index("GUI")?;
     let value = Value::String(value.to_string());
-    conn.send_property_update(vec![GUI_IDX], name.into(), value.clone())?;
-    if let Err(e) = conn.state().set_property(&[GUI_IDX], name, value) {
+    conn.send_property_update(vec![gui_idx], name.into(), value.clone())?;
+    if let Err(e) = conn.state().set_property(&[gui_idx], name, value) {
         warn!("failed to update local state: {e}");
     }
     Ok(())

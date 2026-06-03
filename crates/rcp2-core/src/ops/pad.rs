@@ -1,4 +1,3 @@
-use super::{GUI_IDX, SYSTEM_IDX};
 use log::{info, warn};
 use rcp2_protocol::device::{DeviceConnection, DeviceProfile, PHYSICAL_INTERFACE_IDX};
 use rcp2_protocol::packet::child_added::ChildAddedPacket;
@@ -76,9 +75,10 @@ pub fn release_pad(
 /// # Errors
 /// Returns an error if sending the property update fails.
 pub fn sync_bank(conn: &DeviceConnection, bank: usize) -> rcp2_protocol::Result<()> {
+    let gui_idx = conn.state().root_child_index("GUI")?;
     let value = Value::U32(u32::try_from(bank).unwrap_or(0));
-    conn.send_property_update(vec![GUI_IDX], "selectedBank".into(), value.clone())?;
-    if let Err(e) = conn.state().set_property(&[GUI_IDX], "selectedBank", value) {
+    conn.send_property_update(vec![gui_idx], "selectedBank".into(), value.clone())?;
+    if let Err(e) = conn.state().set_property(&[gui_idx], "selectedBank", value) {
         warn!("failed to update local state: {e}");
     }
     Ok(())
@@ -350,8 +350,9 @@ pub fn delete_pad(
 /// Returns an error if sending the property update fails.
 pub fn activate_transfer_mode(conn: &DeviceConnection, mode: u32) -> rcp2_protocol::Result<()> {
     info!("activating transfer mode {mode}");
+    let system_idx = conn.state().root_child_index("SYSTEM")?;
     conn.send_property_update(
-        vec![SYSTEM_IDX],
+        vec![system_idx],
         "transferModeType".into(),
         Value::U32(mode),
     )
@@ -363,7 +364,8 @@ pub fn activate_transfer_mode(conn: &DeviceConnection, mode: u32) -> rcp2_protoc
 /// Returns an error if sending the property update fails.
 pub fn deactivate_transfer_mode(conn: &DeviceConnection) -> rcp2_protocol::Result<()> {
     info!("deactivating transfer mode");
-    conn.send_property_update(vec![SYSTEM_IDX], "transferModeType".into(), Value::U32(0))
+    let system_idx = conn.state().root_child_index("SYSTEM")?;
+    conn.send_property_update(vec![system_idx], "transferModeType".into(), Value::U32(0))
 }
 
 /// Triggers a remount of the pad storage on the device.
@@ -372,8 +374,9 @@ pub fn deactivate_transfer_mode(conn: &DeviceConnection) -> rcp2_protocol::Resul
 /// Returns an error if sending the property update fails.
 pub fn remount_pad_storage(conn: &DeviceConnection) -> rcp2_protocol::Result<()> {
     info!("sending remountPadStorage");
+    let system_idx = conn.state().root_child_index("SYSTEM")?;
     conn.send_property_update(
-        vec![SYSTEM_IDX],
+        vec![system_idx],
         "remountPadStorage".into(),
         Value::Bool(true),
     )
