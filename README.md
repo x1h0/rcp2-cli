@@ -40,8 +40,9 @@ Many device features are not accessible through this tool, including mixer/EQ/ef
 - Rust toolchain (stable) with `cargo` to build and install
 - udev rules for non-root access (see below)
 - The `usbhid` quirk to avoid the on-exit device freeze (see [Preventing the Device Freeze](#preventing-the-device-freeze-recommended))
-- Build: `libudev-dev libwayland-dev` (Debian/Ubuntu) or `systemd-libs wayland` (Arch)
+- Build: `libudev-dev` (Debian/Ubuntu) or `systemd-libs` (Arch)
 - Runtime: `lsblk`, `udisksctl` (for transfer mode mount detection)
+- Runtime: a running `xdg-desktop-portal` backend (for the sound-upload file picker; works under both X11 and Wayland)
 
 
 ## Installation
