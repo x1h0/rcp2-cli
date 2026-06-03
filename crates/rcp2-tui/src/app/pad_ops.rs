@@ -277,34 +277,42 @@ impl App {
                     form.audio_duration = duration;
 
                     if let Some(dur) = duration {
-                        let dur_str = format!("{dur:.1}s");
+                        use crate::detail_form::{FieldKind, FormField};
+
                         form.fields.retain(|f| {
-                            f.property.as_deref() != Some("padEnvStart")
-                                && f.property.as_deref() != Some("padEnvStop")
+                            !matches!(
+                                f.property.as_deref(),
+                                Some("padDuration" | "padEnvStart" | "padEnvStop")
+                            )
                         });
                         let insert_pos = form
                             .fields
                             .iter()
                             .position(|f| f.property.as_deref() == Some("create"))
                             .unwrap_or(form.fields.len());
-                        form.fields.insert(
-                            insert_pos,
-                            crate::detail_form::FormField {
-                                label: format!("End ({dur_str})"),
-                                kind: crate::detail_form::FieldKind::Number,
-                                value_display: format!("{dur:.1}"),
-                                property: Some("padEnvStop".into()),
+                        let new_fields = [
+                            FormField {
+                                label: "Duration".into(),
+                                kind: FieldKind::ReadOnly,
+                                value_display: format!("{dur:.2}s"),
+                                property: Some("padDuration".into()),
                             },
-                        );
-                        form.fields.insert(
-                            insert_pos,
-                            crate::detail_form::FormField {
-                                label: format!("Start ({dur_str})"),
-                                kind: crate::detail_form::FieldKind::Number,
+                            FormField {
+                                label: "Start".into(),
+                                kind: FieldKind::Number,
                                 value_display: "0.0".into(),
                                 property: Some("padEnvStart".into()),
                             },
-                        );
+                            FormField {
+                                label: "End".into(),
+                                kind: FieldKind::Number,
+                                value_display: format!("{dur:.2}"),
+                                property: Some("padEnvStop".into()),
+                            },
+                        ];
+                        for (i, field) in new_fields.into_iter().enumerate() {
+                            form.fields.insert(insert_pos + i, field);
+                        }
                     }
                 }
                 "upload" => {
