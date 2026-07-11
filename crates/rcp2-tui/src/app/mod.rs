@@ -4,6 +4,7 @@ mod transfer_ops;
 use crate::detail_form::DetailForm;
 use crate::transfer::{PadDownload, PadMove, PadUpload, TransferState, TransferStatus};
 use log::{info, warn};
+use rcp2_core::recording::RecordingTimer;
 use rcp2_core::{BankView, DeviceProfile, DeviceViewModel, PadInfo, RecordingStatus};
 use rcp2_protocol::device::{DeviceConnection, DeviceEvent};
 use rcp2_protocol::transport::hid::HidTransport;
@@ -113,8 +114,7 @@ pub struct App {
     pub pad_move: Option<PadMove>,
     pub move_selection: Option<MoveSelection>,
     pub confirm_dialog: Option<ConfirmDialog>,
-    pub(super) rec_started_at: Option<Instant>,
-    pub(super) rec_paused_elapsed: u64,
+    pub(super) rec_timer: RecordingTimer,
     pub(super) log_start: Instant,
     pub(super) pad_hold: PadHold,
 }
@@ -181,8 +181,7 @@ impl App {
             pad_move: None,
             move_selection: None,
             confirm_dialog: None,
-            rec_started_at: None,
-            rec_paused_elapsed: 0,
+            rec_timer: RecordingTimer::new(),
             log_start: Instant::now(),
             pad_hold: PadHold::Tap,
         })
@@ -237,8 +236,7 @@ impl App {
                     self.connected = false;
                     self.status = "disconnected".into();
                     self.push_log("[disconnected]");
-                    self.rec_started_at = None;
-                    self.rec_paused_elapsed = 0;
+                    self.rec_timer.reset();
                 }
                 DeviceEvent::Error(e) => {
                     self.status = format!("error: {e}");
@@ -324,30 +322,11 @@ impl App {
     }
 
     fn update_rec_timer(&mut self, prev: RecordingStatus) {
-        let cur = self.vm.recorder.state;
-        if prev == cur {
-            return;
-        }
-        match cur {
-            RecordingStatus::Recording => {
-                self.rec_started_at = Some(Instant::now());
-            }
-            RecordingStatus::Paused => {
-                if let Some(started) = self.rec_started_at {
-                    self.rec_paused_elapsed += started.elapsed().as_secs();
-                }
-                self.rec_started_at = None;
-            }
-            RecordingStatus::Stopped => {
-                self.rec_started_at = None;
-                self.rec_paused_elapsed = 0;
-            }
-        }
+        self.rec_timer.update(prev, self.vm.recorder.state);
     }
 
     pub fn recording_seconds(&self) -> u64 {
-        let active = self.rec_started_at.map_or(0, |t| t.elapsed().as_secs());
-        self.rec_paused_elapsed + active
+        self.rec_timer.seconds()
     }
 
     pub fn current_bank(&self) -> BankView {

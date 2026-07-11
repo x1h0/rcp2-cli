@@ -138,18 +138,20 @@ const TIMEZONES: [&str; 137] = [
     "(UTC+14:00) Kiritimati Island",
 ];
 
-pub(super) const TIMEZONE_COUNT: usize = TIMEZONES.len();
+pub const TIMEZONE_COUNT: usize = TIMEZONES.len();
 
-pub(super) fn timezone_label(index: u32) -> String {
+#[must_use]
+pub fn timezone_label(index: u32) -> String {
     TIMEZONES
         .get(index as usize)
         .map_or_else(|| format!("#{index}"), |s| (*s).to_string())
 }
 
-pub(super) const LANGUAGE_CODES: [&str; 10] =
+pub const LANGUAGE_CODES: [&str; 10] =
     ["en", "es", "fr", "it", "pt", "de", "ru", "ko", "zh", "ja"];
 
-pub(super) fn language_label(code: &str) -> &str {
+#[must_use]
+pub fn language_label(code: &str) -> &str {
     match code {
         "en" => "English",
         "es" => "Espa\u{00F1}ol",

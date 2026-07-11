@@ -4,12 +4,11 @@ mod help;
 mod monitor;
 mod pads;
 mod settings;
-mod settings_labels;
 mod strip;
 mod transfer;
 mod util;
 
-pub(crate) use settings::{
+pub(crate) use rcp2_core::settings::{
     DraftField, FieldRole, SETTINGS_CATEGORY_COUNT, SettingsNode, SettingsStep,
     category_draft_fields, cycle_language, cycle_timezone, language_code, language_index,
     settings_category_is_language, settings_field_role, settings_item_count, settings_live_toggle,

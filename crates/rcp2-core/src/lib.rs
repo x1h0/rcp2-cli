@@ -1,5 +1,9 @@
+pub mod form;
 pub mod ops;
 mod pad;
+pub mod recording;
+pub mod settings;
+mod settings_labels;
 
 pub use pad::{BankView, PadColor, PadInfo, PadType};
 pub use rcp2_protocol::device::{DeviceModel, DeviceProfile};
