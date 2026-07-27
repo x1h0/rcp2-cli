@@ -62,12 +62,21 @@ pub fn new_pad_fields() -> Vec<FormField> {
             "(none)".into(),
             Some("soundFile"),
         ),
-        FormField::new("Create pad", FieldKind::Action, String::new(), Some("create")),
+        FormField::new(
+            "Create pad",
+            FieldKind::Action,
+            String::new(),
+            Some("create"),
+        ),
     ]
 }
 
 #[must_use]
-pub fn replace_sound_fields(pad_name: &str, filename: &str, duration: Option<f64>) -> Vec<FormField> {
+pub fn replace_sound_fields(
+    pad_name: &str,
+    filename: &str,
+    duration: Option<f64>,
+) -> Vec<FormField> {
     let dur_label = duration.map_or_else(|| "?".into(), |d| format!("{d:.2}s"));
 
     let mut fields = vec![
@@ -208,7 +217,11 @@ fn action_fields(pad: &PadInfo, dry_run: bool) -> Vec<FormField> {
     }
     if !dry_run && is_sound {
         fields.push(FormField::new(
-            if has_file { "Replace sound" } else { "Upload sound" },
+            if has_file {
+                "Replace sound"
+            } else {
+                "Upload sound"
+            },
             FieldKind::Action,
             String::new(),
             Some("upload"),
@@ -221,7 +234,12 @@ fn action_fields(pad: &PadInfo, dry_run: bool) -> Vec<FormField> {
         Some("play"),
     ));
     if !dry_run {
-        fields.push(FormField::new("Move pad", FieldKind::Action, String::new(), Some("move")));
+        fields.push(FormField::new(
+            "Move pad",
+            FieldKind::Action,
+            String::new(),
+            Some("move"),
+        ));
     }
     fields.push(FormField::new(
         "Delete pad",

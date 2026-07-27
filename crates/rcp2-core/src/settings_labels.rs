@@ -147,8 +147,7 @@ pub fn timezone_label(index: u32) -> String {
         .map_or_else(|| format!("#{index}"), |s| (*s).to_string())
 }
 
-pub const LANGUAGE_CODES: [&str; 10] =
-    ["en", "es", "fr", "it", "pt", "de", "ru", "ko", "zh", "ja"];
+pub const LANGUAGE_CODES: [&str; 10] = ["en", "es", "fr", "it", "pt", "de", "ru", "ko", "zh", "ja"];
 
 #[must_use]
 pub fn language_label(code: &str) -> &str {
