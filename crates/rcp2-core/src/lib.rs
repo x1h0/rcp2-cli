@@ -268,9 +268,9 @@ fn extract_faders(state: &Structured, profile: &DeviceProfile) -> Vec<FaderInfo>
             let configured = ch.input_source != INVALID_INPUT_SOURCE;
             let level = if configured {
                 let mix_offset = (ch.input_source as usize).checked_mul(MIXES_PER_CHANNEL);
-                mix_offset
-                    .and_then(|i| mix_nodes.get(i))
-                    .map_or(0.0, |n| parse_mix_level(n))
+                mix_offset.and_then(|i| mix_nodes.get(i)).map_or(0.0, |n| {
+                    parse_mix_level(&get_string(n, "mixLevelWithAnchor"))
+                })
             } else {
                 0.0
             };
@@ -284,13 +284,14 @@ fn extract_faders(state: &Structured, profile: &DeviceProfile) -> Vec<FaderInfo>
         .collect()
 }
 
-fn parse_mix_level(node: &Structured) -> f64 {
-    let raw = get_string(node, "mixLevelWithAnchor");
-    raw.split('|')
+fn parse_mix_level(raw: &str) -> f64 {
+    let level = raw
+        .split('|')
         .next()
         .and_then(|s| s.parse::<f64>().ok())
-        .unwrap_or(0.0)
-        .clamp(0.0, 1.0)
+        .filter(|v| v.is_finite())
+        .unwrap_or(0.0);
+    if level <= 0.0 { 0.0 } else { level.min(1.0) }
 }
 
 // The firmware always exposes four POT nodes; only the first physical_pots are real knobs.
@@ -481,7 +482,24 @@ pub(crate) fn get_string(node: &Structured, name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_storage_state;
+    use super::{parse_mix_level, parse_storage_state};
+
+    #[test]
+    fn parses_mix_level() {
+        assert_eq!(parse_mix_level("0.55|-12.0"), 0.55);
+        assert_eq!(parse_mix_level("1.0|0.0"), 1.0);
+        assert_eq!(parse_mix_level("0"), 0.0);
+        assert_eq!(parse_mix_level(""), 0.0);
+    }
+
+    #[test]
+    fn mix_level_rejects_values_outside_the_range() {
+        assert_eq!(parse_mix_level("2.5|0.0"), 1.0);
+        assert_eq!(parse_mix_level("-1.0|0.0"), 0.0);
+        assert_eq!(parse_mix_level("inf"), 0.0);
+        assert_eq!(parse_mix_level("nan"), 0.0);
+        assert!(parse_mix_level("-0.0").is_sign_positive());
+    }
 
     #[test]
     fn parses_storage_volume_state() {
