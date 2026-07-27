@@ -64,13 +64,14 @@ pub(super) fn render_help(frame: &mut Frame, area: Rect, app: &mut App) {
         .scroll((app.help_scroll, 0));
     frame.render_widget(paragraph, area);
 
-    let inner_height = area.height.saturating_sub(3) as usize;
-    app.help_max_scroll = line_count.saturating_sub(inner_height) as u16;
+    let inner_height = usize::from(area.height.saturating_sub(3));
+    app.help_max_scroll =
+        u16::try_from(line_count.saturating_sub(inner_height)).unwrap_or(u16::MAX);
     render_scrollbar(
         frame,
         area,
         line_count,
         inner_height,
-        app.help_scroll as usize,
+        usize::from(app.help_scroll),
     );
 }

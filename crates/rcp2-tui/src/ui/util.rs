@@ -46,11 +46,12 @@ pub(super) fn level_bar(value: f64, max: f64) -> String {
         return "\u{2591}\u{2591}\u{2591}\u{2591}".to_string();
     }
     let ratio = (value / max).clamp(0.0, 1.0);
-    let filled = (ratio * 4.0) as usize;
-    let partial = ((ratio * 4.0).fract() * 8.0) as usize;
+    let eighths = (1..=32).filter(|&n| ratio * 32.0 >= f64::from(n)).count();
+    let filled = eighths / 8;
+    let partial = eighths % 8;
     let blocks = [
-        '\u{2591}', '\u{258F}', '\u{258E}', '\u{258D}', '\u{258C}', '\u{258B}', '\u{258A}',
-        '\u{2589}',
+        '\u{2591}', '\u{2592}', '\u{2592}', '\u{2592}', '\u{2593}', '\u{2593}', '\u{2593}',
+        '\u{2593}',
     ];
 
     let mut bar = String::new();
@@ -74,5 +75,27 @@ pub(super) fn format_seconds(total_secs: u64) -> String {
         format!("{hours}:{mins:02}:{secs:02}")
     } else {
         format!("{mins}:{secs:02}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::level_bar;
+
+    #[test]
+    fn level_bar_covers_the_range() {
+        assert_eq!(level_bar(0.0, 1.0), "░░░░");
+        assert_eq!(level_bar(0.5, 1.0), "██░░");
+        assert_eq!(level_bar(0.55, 1.0), "██▒░");
+        assert_eq!(level_bar(0.625, 1.0), "██▓░");
+        assert_eq!(level_bar(1.0, 1.0), "████");
+        assert_eq!(level_bar(127.0, 127.0), "████");
+    }
+
+    #[test]
+    fn level_bar_handles_degenerate_input() {
+        assert_eq!(level_bar(1.0, 0.0), "░░░░");
+        assert_eq!(level_bar(-5.0, 1.0), "░░░░");
+        assert_eq!(level_bar(5.0, 1.0), "████");
     }
 }

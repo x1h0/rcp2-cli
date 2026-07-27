@@ -18,24 +18,16 @@ pub(super) fn render_device_strip(frame: &mut Frame, area: Rect, app: &App) {
     let has_physical = physical > 0;
     let has_virtual = virtual_count > 0;
 
+    let total = pot_count + physical + virtual_count;
     let mut sections: Vec<Constraint> = Vec::new();
     if has_pots {
-        sections.push(Constraint::Ratio(
-            pot_count as u32,
-            (pot_count + physical + virtual_count) as u32,
-        ));
+        sections.push(ratio(pot_count, total));
     }
     if has_physical {
-        sections.push(Constraint::Ratio(
-            physical as u32,
-            (pot_count + physical + virtual_count) as u32,
-        ));
+        sections.push(ratio(physical, total));
     }
     if has_virtual {
-        sections.push(Constraint::Ratio(
-            virtual_count as u32,
-            (pot_count + physical + virtual_count) as u32,
-        ));
+        sections.push(ratio(virtual_count, total));
     }
 
     let section_areas = Layout::horizontal(sections).split(area);
@@ -66,6 +58,13 @@ pub(super) fn render_device_strip(frame: &mut Frame, area: Rect, app: &App) {
     }
 }
 
+fn ratio(part: usize, total: usize) -> Constraint {
+    Constraint::Ratio(
+        u32::try_from(part).unwrap_or(u32::MAX),
+        u32::try_from(total).unwrap_or(u32::MAX),
+    )
+}
+
 fn render_pot_section(frame: &mut Frame, area: Rect, pots: &[u32]) {
     let block = Block::default()
         .title(" Pots ")
@@ -74,10 +73,7 @@ fn render_pot_section(frame: &mut Frame, area: Rect, pots: &[u32]) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let constraints: Vec<Constraint> = pots
-        .iter()
-        .map(|_| Constraint::Ratio(1, pots.len() as u32))
-        .collect();
+    let constraints: Vec<Constraint> = pots.iter().map(|_| ratio(1, pots.len())).collect();
     let cols = Layout::horizontal(constraints).split(inner);
 
     for (i, &level) in pots.iter().enumerate() {
@@ -88,7 +84,7 @@ fn render_pot_section(frame: &mut Frame, area: Rect, pots: &[u32]) {
             cols[i],
             &format!("P{}", i + 1),
             &bar,
-            Some(pct),
+            Some(f64::from(pct)),
             Color::Magenta,
         );
     }
@@ -108,14 +104,11 @@ fn render_fader_section(
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let constraints: Vec<Constraint> = faders
-        .iter()
-        .map(|_| Constraint::Ratio(1, faders.len() as u32))
-        .collect();
+    let constraints: Vec<Constraint> = faders.iter().map(|_| ratio(1, faders.len())).collect();
     let cols = Layout::horizontal(constraints).split(inner);
 
     for (i, fader) in faders.iter().enumerate() {
-        let pct = (fader.percent() * 100.0).round() as u32;
+        let pct = (fader.percent() * 100.0).round();
         let bar = level_bar(fader.percent(), 1.0);
         let color = fader_color(fader.mute, fader.cue);
         let suffix = fader_suffix(fader.mute, fader.cue);
@@ -132,16 +125,13 @@ fn render_virtual_section(frame: &mut Frame, area: Rect, faders: &[rcp2_core::Fa
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let constraints: Vec<Constraint> = faders
-        .iter()
-        .map(|_| Constraint::Ratio(1, faders.len() as u32))
-        .collect();
+    let constraints: Vec<Constraint> = faders.iter().map(|_| ratio(1, faders.len())).collect();
     let cols = Layout::horizontal(constraints).split(inner);
 
     for (i, fader) in faders.iter().enumerate() {
         let label = format!("V{}", i + 1);
         if fader.configured {
-            let pct = (fader.percent() * 100.0).round() as u32;
+            let pct = (fader.percent() * 100.0).round();
             let bar = level_bar(fader.percent(), 1.0);
             let color = fader_color(fader.mute, fader.cue);
             render_channel(frame, cols[i], &label, &bar, Some(pct), color);
@@ -176,10 +166,10 @@ fn render_channel(
     area: Rect,
     label: &str,
     bar: &str,
-    pct: Option<u32>,
+    pct: Option<f64>,
     color: Color,
 ) {
-    let w = area.width as usize;
+    let w = usize::from(area.width);
 
     let line2 = if let Some(p) = pct {
         let pct_str = format!("{p}%");
