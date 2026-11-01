@@ -4,12 +4,12 @@
 ![Rust](https://img.shields.io/badge/rust-stable-orange)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey)
 ![Status](https://img.shields.io/badge/status-experimental-red)
-![Firmware](https://img.shields.io/badge/tested--with--firmware-1.7.3-blue)
+![Firmware](https://img.shields.io/badge/tested--with--firmware-1.7.3--1.7.7-blue)
 
 Unofficial command-line tool and TUI for managing the RØDECaster Pro II via USB HID.
 
 **This is experimental software. Use at your own risk.**
-The protocol was reverse-engineered from USB captures, based on [JUCE ValueTreeSynchroniser](https://docs.juce.com/master/classValueTreeSynchroniser.html), and tested only with firmware 1.7.3. Other versions may not work, and there is no guarantee for correctness or safety.
+The protocol was reverse-engineered from USB captures, based on [JUCE ValueTreeSynchroniser](https://docs.juce.com/master/classValueTreeSynchroniser.html), and tested only with firmware 1.7.3 to 1.7.7. Other versions may not work, and there is no guarantee for correctness or safety.
 Using this tool may freeze your device, require a USB replug to recover, or corrupt your configuration and sounds.
 
 <p align="center">
