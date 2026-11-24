@@ -9,4 +9,3 @@ hidapi = { workspace = true }
 nom = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
